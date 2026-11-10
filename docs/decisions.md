@@ -8,6 +8,12 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-07: Dependencies in pyproject.toml
+
+- **Decided:** Dependencies and package metadata live only in `pyproject.toml`, installed with `pip install -e ".[dev,explore]"`. `requirements.txt` is removed. Notebook-only packages are in the `explore` extra.
+- **Why:** The `src/flag_it/` layout needs an installable package, which needs `pyproject.toml`. One file means nothing to keep in sync.
+- **Rejected:** Keeping `requirements.txt` beside it (two lists to sync). A lock tool such as uv or pip-tools, for now.
+
 ## 2026-11-10: Contract changes from the plan 01 review
 
 - **Decided:**
