@@ -86,3 +86,10 @@ def anomaly(**over) -> AnomalyResult:
         "as_of": AS_OF,
     }
     return AnomalyResult(**(data | over))
+
+from flag_it.contracts.snapshot import CombinedExpense
+
+
+def combined(**over) -> CombinedExpense:
+    data = {"transaction": normalized(), "receipt": None, "category": category(), "anomaly": anomaly()}
+    return CombinedExpense(**(data | over))
