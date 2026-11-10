@@ -1,0 +1,374 @@
+MCC_DESCRIPTION,osu_rows,osu_usd,category,confidence,note
+BOOK STORES,14232,2045353.4,Office & general supplies,low,mostly Amazon: category depends on item text
+GROCERY STORES  SUPERMARKETS,7664,582873.85,Meals & refreshments,low,groceries: meals vs instructional food vs general supplies
+AMERICAN AIRLINES,6776,2888331.94,Airfare & baggage,high,airline MCC
+MISCELLANEOUS AND RETAIL STORES,4127,917695.67,Office & general supplies,low,general merchandise: category depends on item text
+HOME SUPPLY WAREHOUSE STORES,3271,456864.3,Equipment & tools,low,Lowe's/Home Depot: tools vs facilities vs supplies
+EATING PLACES  RESTAURANTS,2860,891210.09,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+TRAVEL AGENCIES,2822,239816.57,"Services, shipping & fees",low,agent/booking fees (median ~$25); could be Airfare
+AIRLINES  AIR CARRIERS,2713,38815.5,Airfare & baggage,high,airline MCC
+INDUSTRIAL SUPPLIES NOT ESLEWHERE CLASSI,2320,918095.02,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+LAB/MEDICAL/DENTAL/OPHTHALMIC HOSPITAL E,2267,1166267.9,"Lab, research & medical supplies",high,lab/medical supplies MCC
+FAST FOOD RESTAURANTS,2206,450646.46,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+COMPUTER SOFTWARE STORES,2083,619383.01,Software & subscriptions,medium,software/subscriptions
+VARIETY STORES,1917,266272.48,Office & general supplies,low,general merchandise: category depends on item text
+BUSINESS SERVICES NOT ELSEWHERE CLASSIFI,1838,858593.29,"Services, shipping & fees",medium,services/shipping/fees
+DISCOUNT STORES,1806,236989.74,Office & general supplies,low,general merchandise: category depends on item text
+PLUMBING & HEATING EQUIPMENT AND SUPPLIE,1680,511715.69,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+AUTOMOTIVE PARTS  ACCESSORIES STORES,1652,210588.68,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+HARDWARE STORES,1639,257023.66,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+MEMBERSHIP ORGANIZATIONS NOT ELSEWHERE C,1531,750833.35,Registrations & memberships,medium,registrations/memberships/events
+CHARITABLE AND SOCIAL SERVICE ORGANIZATI,1476,783042.3099999999,Registrations & memberships,low,event registrations vs donations (donations would be Restricted)
+GOVERNMENT SERVICES NOT ELSEWHERE CLASSI,1424,515760.76,"Services, shipping & fees",medium,services/shipping/fees
+MISCELLANEOUS PUBLISHING & PRINTING,1418,497062.42,"Services, shipping & fees",medium,services/shipping/fees
+SOUTHWEST AIRLINES,1146,620431.46,Airfare & baggage,high,airline MCC
+LODGING  HOTELS  MOTELS  RESORTS,1087,560361.71,Lodging,high,lodging MCC
+HOLIDAY INNS,1017,207131.13,Lodging,high,lodging MCC
+DELTA,901,439995.17,Airfare & baggage,high,airline MCC
+UNITED AIRLINES,894,397728.76,Airfare & baggage,high,airline MCC
+UTILITIES-ELEC/GAS/HEAT OIL/SANITARY/WTR,890,221923.66,Utilities & facilities,medium,utilities & facilities/maintenance
+ADVERTISING SERVICES,887,207251.87,"Services, shipping & fees",medium,services/shipping/fees
+EQUIP RENTALS & LEASING SERVICES  TOOL R,863,202995.97,"Services, shipping & fees",medium,services/shipping/fees
+ELECTRICAL PARTS AND EQUIPMENT,862,279973.77,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+TAXICABS/LIMOUSINES,836,139882.86,Ground transportation,high,ground transport MCC
+ELECTRONIC SALES,813,372056.45,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+CONTINUITY/SUBSCRIPTION MERCHANTS,794,126633.12,Software & subscriptions,medium,software/subscriptions
+COMMERCIAL EQUIPMENT  NOT ELSEWHERE CLAS,752,396468.08,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+SCHOOLS AND EDUCATIONAL SERVICES NOT ELS,751,469619.07,Registrations & memberships,medium,registrations/memberships/events
+COLLEGES  UNIVERSITIES  PROFESSIONAL SCH,723,321422.28,Registrations & memberships,medium,registrations/memberships/events
+NON-DURABLE GOODS NOT ELSEWHERE CLASSIFI,684,247920.93,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+MISCELLANEOUS AUTOMOTIVE DEALERS,663,212607.0,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+SERVICE STATIONS,655,96495.07,Ground transportation,medium,fuel; assumed travel/fleet fuel
+STATIONERY OFFICE SUPPLIES PRINTING AND,634,217264.99,"Services, shipping & fees",medium,services/shipping/fees
+DURABLE GOODS NOT ELSEWHERE CLASSIFIED,603,360081.35,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+HAMPTON INNS HOTELS,594,159403.07,Lodging,high,lodging MCC
+LARGE DIGITAL GOODS MERCHANT,590,55472.47,Software & subscriptions,medium,software/subscriptions
+PROFESSIONAL SERVICES NOT ELSEWHERE CLAS,577,437181.29,"Services, shipping & fees",medium,services/shipping/fees
+COMPUTER AND DATA PROCESSING SERVICES,546,258967.37,Software & subscriptions,medium,software/subscriptions
+COURIER SERVICES-AIR OR GROUND FREIGHT F,491,174280.4,"Services, shipping & fees",medium,services/shipping/fees
+HOBBY TOY  AND GAME SHOPS,483,105897.48,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+CHEMICALS AND ALLIED PRODUCTS NOT ESLEWH,479,231016.06,"Lab, research & medical supplies",high,lab/medical supplies MCC
+CABLE  SATELLITE & OTHER PAY TV/RADIO SE,468,45648.82,Utilities & facilities,medium,utilities & facilities/maintenance
+COMPUTER NETWORK/INFORMATION SERVICES,458,122123.31999999999,Software & subscriptions,medium,software/subscriptions
+SPORTING GOODS STORES,457,287269.39,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+COMMERCIAL PHOTOGRAPHY  ART  AND GRAPHIC,386,102297.5,"Services, shipping & fees",medium,services/shipping/fees
+MARRIOTT,385,354652.29,Lodging,high,lodging MCC
+CONSTRUCTION MATERIALS,384,132636.44,Utilities & facilities,medium,utilities & facilities/maintenance
+TOLLS  ROAD AND BRIDGE FEES,384,21877.75,Parking & tolls,high,parking/tolls MCC
+GLASS  PAINT  WALLPAPER STORES,378,53111.03,Utilities & facilities,medium,utilities & facilities/maintenance
+BEST WESTERN HOTELS,376,94472.06999999999,Lodging,high,lodging MCC
+NURSERIES  LAWN AND GARDEN SUPPLY STORES,374,183325.23,Utilities & facilities,medium,utilities & facilities/maintenance
+ALL OTHER DIRECT MARKETERS,373,201894.81,"Services, shipping & fees",medium,services/shipping/fees
+PET SHOPS-PET FOOD AND SUPPLY STORES,366,97974.69,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+MISCELLANEOUS GENERAL MERCHANDISE STORES,363,263748.53,Office & general supplies,low,general merchandise: category depends on item text
+HILTON,357,201208.85,Lodging,high,lodging MCC
+COMPUTERS COMPUTER PERIPHERAL EQUIPMENT,341,165132.28,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+MISC FOOD STORES-SPECIALITY CONVENIENCE,318,136985.52,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+TESTING LABORATORIES (NON-MEDICAL),309,116888.84,"Services, shipping & fees",medium,services/shipping/fees
+TELECOMMUNICATION SERV.INCLUD. LOCAL/L.D,309,59621.05,Utilities & facilities,medium,utilities & facilities/maintenance
+CIVIC  SOCIAL AND FRATERNAL ASSOCIATIONS,307,195165.42,Registrations & memberships,medium,registrations/memberships/events
+HOME2 SUITES,304,126911.22,Lodging,high,lodging MCC
+CATALOG MERCHANTS,303,158743.72,Office & general supplies,low,general merchandise: category depends on item text
+HARDWARE EQUIPMENT AND SUPPLIES,301,199607.71,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+HILTON GARDEN INN,296,147462.74,Lodging,high,lodging MCC
+QUICK-COPY AND REPRODUCTION SERVICES,293,81972.65,"Services, shipping & fees",medium,services/shipping/fees
+CATERERS,289,189378.11000000002,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+TRANSPORTATION SERVICES NOT ELSEWHERE CL,276,24073.99,Ground transportation,high,ground transport MCC
+MISCELLANEOUS PERSONAL SERVICES,254,147899.19,"Services, shipping & fees",medium,services/shipping/fees
+NATIONAL CAR RENTAL,252,69613.01,Ground transportation,high,ground transport MCC
+SPRINGHILL SUITES,245,98853.86,Lodging,high,lodging MCC
+DIGITAL GOODS - APPS (EXCLUDES GAMES),240,54544.85,Software & subscriptions,medium,software/subscriptions
+MEN S AND WOMEN S CLOTHING STORES,236,94663.26,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+DEPARTMENT STORES,232,73375.46,Office & general supplies,low,general merchandise: category depends on item text
+AUTOMOBILE PARKING LOTS AND GARAGES,230,11294.26,Parking & tolls,high,parking/tolls MCC
+AGRICULTURAL COOPERATIVES,226,128327.38,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+ENTERPRISE RENT-A-CAR,225,59751.58,Ground transportation,high,ground transport MCC
+AUTOMOTIVE TIRE STORES,222,75094.63,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+HOUSEHOLD APPLIANCE STORES,218,226412.38999999998,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+DIGITAL GOODS - MEDIA BOOKS MOVIES MUSIC,213,91729.24,Software & subscriptions,medium,software/subscriptions
+HYATT HOTELS,212,155900.48,Lodging,high,lodging MCC
+WHOLESALE CLUBS,210,54925.95,Meals & refreshments,low,groceries: meals vs instructional food vs general supplies
+EMBASSY SUITES,202,93507.76,Lodging,high,lodging MCC
+MANAGEMENT  CONSULTING AND PUBLIC RELATI,197,136938.42,"Services, shipping & fees",medium,services/shipping/fees
+STATIONARY  OFFICE AND SCHOOL SUPPLY STO,193,39373.02,Office & general supplies,medium,office/school supplies
+AUTOMOTIVE REPAIR SHOPS (NON-DEALER),192,83799.32,"Services, shipping & fees",medium,services/shipping/fees
+DRUGS DRUG PROPRIETARIES AND DRUGGIST S,181,80988.55,"Lab, research & medical supplies",high,lab/medical supplies MCC
+BOOKS PERIODICALS AND NEWSPAPERS,177,124675.94,Office & general supplies,medium,office/school supplies
+AUTOMATED FUEL DISPENSERS,176,6718.31,Ground transportation,medium,fuel; assumed travel/fleet fuel
+MEDICAL AND DENTAL LABORATORIES,172,122759.97,"Lab, research & medical supplies",high,lab/medical supplies MCC
+PUBLIC WAREHOUSING-FARM PROD REFRIDGERAT,170,44631.7,"Services, shipping & fees",medium,services/shipping/fees
+RESIDENCE INN,166,53816.81,Lodging,high,lodging MCC
+COURTYARD INNS,163,70737.18,Lodging,high,lodging MCC
+LUMBER AND BUILDING MATERIALS STORES,155,44938.54,Utilities & facilities,medium,utilities & facilities/maintenance
+FAIRFIELD INN,153,50039.8,Lodging,high,lodging MCC
+LA QUINTA INN AND SUITES,151,33931.93,Lodging,high,lodging MCC
+MEDICAL SERVICES & HEALTH PRACTITIONERS,144,73447.78,"Services, shipping & fees",medium,services/shipping/fees
+VETERINARY SERVICES,143,94318.31,"Services, shipping & fees",medium,services/shipping/fees
+DRUG STORES  PHARMACIES,143,25384.08,"Lab, research & medical supplies",high,lab/medical supplies MCC
+COMBINATION CATALOG AND RETAIL MERCHANT,137,38616.97,Office & general supplies,low,general merchandise: category depends on item text
+SHERATON,133,100762.83,Lodging,high,lodging MCC
+SPECIAL TRADE CONTRACTORS,127,82803.19,Utilities & facilities,medium,utilities & facilities/maintenance
+HEATING  PLUMBING  AIR CONDITIONING CONT,126,109686.35,Utilities & facilities,medium,utilities & facilities/maintenance
+MUSIC STORES-MUSICAL INSTRUMENTS  PIANOS,124,55350.67,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+MEN S WOMENS AND CHILDREN S UNIFORMS AND,119,82668.89,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+LOCAL SUBURBAN COMMUTER PASSENGER TRANSP,119,7724.06,Ground transportation,high,ground transport MCC
+TAX PAYMENTS,118,31698.52,"Services, shipping & fees",medium,services/shipping/fees
+COMFORT INNS,117,29314.17,Lodging,high,lodging MCC
+DOUBLETREE,113,75529.55,Lodging,high,lodging MCC
+MISCELLENEOUS APPAREL AND ACCESSORY STOR,111,32635.02,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+SPORTS APPAREL  RIDING APPAREL STORES,108,59561.05,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+AMUSEMENT RECREATION SERVICES (SWIMMING,105,64758.69,Registrations & memberships,medium,registrations/memberships/events
+THEATRICAL PRODUCERS (EXCEPT MOTION PICT,104,58151.62,Registrations & memberships,medium,registrations/memberships/events
+TELECOMMUNICATION EQUIPMENT INCLUDING TE,102,36448.26,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+ELECTRICAL AND SMALL APPLIANCE REPAIR SH,96,57008.91,"Services, shipping & fees",medium,services/shipping/fees
+WESTIN,93,63917.5,Lodging,high,lodging MCC
+BAKERIES,92,10100.78,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+GENERAL CONTRACTORS-RESIDENTIAL,92,105113.98,Utilities & facilities,medium,utilities & facilities/maintenance
+HOMEWOOD SUITES,86,46366.18,Lodging,high,lodging MCC
+SEWING  NEEDLEWORK  FABRIC AND PIECE GOO,83,17901.81,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+DISINFECTING AND EXTERMINATING SERVICES,82,24703.37,Utilities & facilities,medium,utilities & facilities/maintenance
+MEMBERSHIP CLUBS (SPORTS RECREATION ATHL,78,26668.84,Registrations & memberships,medium,registrations/memberships/events
+TOURIST ATTRACTIONS AND EXHIBITS,76,26668.64,Registrations & memberships,medium,registrations/memberships/events
+ELECTRICAL CONTRACTORS,70,86610.92,Utilities & facilities,medium,utilities & facilities/maintenance
+ARTIST SUPPLY STORES  CRAFT SHOPS,67,28261.81,Other / unclear,unmapped,no rule
+RENAISSANCE HOTELS,64,45541.16,Lodging,high,lodging MCC
+FLOOR COVERING  RUG AND CARPET STORES,63,46673.06,Utilities & facilities,medium,utilities & facilities/maintenance
+STAYBRIDGE SUITES,62,18487.35,Lodging,high,lodging MCC
+LANDSCAPE AND HORTICULTURAL SERVICES,61,46384.25,Other / unclear,unmapped,no rule
+ALASKA AIRLINES INC.,61,25529.02,Airfare & baggage,high,airline MCC
+OFFICE  PHOTOGRAPHIC  PHOTOCOPY  AND MIC,60,33525.31,Office & general supplies,medium,office/school supplies
+RECORD SHOPS,59,21612.23,Other / unclear,unmapped,no rule
+MISCELLANEOUS REPAIR SHOPS AND RELATED S,57,35882.09,"Services, shipping & fees",medium,services/shipping/fees
+WYNDHAM,56,22845.11,Lodging,high,lodging MCC
+STENOGRAPHIC SERVICES,56,10642.68,Other / unclear,unmapped,no rule
+FLORISTS SUPPLIES NURSERY STOCK & FLOWER,53,44207.6,Other / unclear,unmapped,no rule
+FLORISTS,52,10634.74,Other / unclear,unmapped,no rule
+COMM. SPORTS  PROF. SPORTS CLUBS ATHLETI,51,37468.07,Other / unclear,unmapped,no rule
+PASSENGER RAILWAYS,50,17100.54,Ground transportation,high,ground transport MCC
+INSURANCE-SALES & UNDERWRITING,50,29832.2,"Services, shipping & fees",medium,services/shipping/fees
+COMMERCIAL FURNITURE,50,47978.18,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+PHOTOGRAPHIC STUDIOS,50,8188.33,Other / unclear,unmapped,no rule
+LAUNDRIES SERVICES-FAMILY AND COMMERCIAL,48,2067.62,Other / unclear,unmapped,no rule
+MARRIOT/TOWNPLACE SUITES,47,17142.06,Lodging,high,lodging MCC
+CANDLEWOOD SUITES,47,16998.35,Lodging,high,lodging MCC
+AUTO AND TRUCK DEALERS-(NEW&USED)-SALES,47,31434.09,Other / unclear,unmapped,no rule
+FUEL DEALERS-FUEL OIL  WOOD  COAL  LIQUE,45,23700.15,Ground transportation,medium,fuel; assumed travel/fleet fuel
+FURNITURE  HOME FURNISHINGS AND EQUIPMEN,45,66331.67,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+HYATT PLACE,44,27108.170000000002,Lodging,high,lodging MCC
+CAR WASHES,44,2116.45,Other / unclear,unmapped,no rule
+BRITSH AIRWAYS - BRITISH A,43,11246.42,Airfare & baggage,high,airline MCC
+DAYS INNS,42,2072.91,Lodging,high,lodging MCC
+MOTION PICTURE & VIDEO TAPE PRODUCTION &,42,58648.34,Other / unclear,unmapped,no rule
+BUS LINES  CHARTERS  TOUR BUSES,42,66174.27,Ground transportation,high,ground transport MCC
+MISCELLANEOUS HOUSE FURNISHING SPECIALIT,42,22769.39,Office & general supplies,low,general merchandise: category depends on item text
+RECREATIONAL AND UTILITY TRAILER  CAMPER,40,23980.26,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+QUALITY INNS,40,4055.93,Lodging,high,lodging MCC
+LOEWS HOTELS,39,26849.16,Lodging,high,lodging MCC
+DRY CLEANERS,39,4529.05,Other / unclear,unmapped,no rule
+VOCATIONAL AND TRADE SCHOOLS,38,32269.05,Other / unclear,unmapped,no rule
+MOTORCYCLE DEALERS,38,10830.53,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+BANDS  ORCHESTRAS  ENTERTAINERS,37,37610.66,Other / unclear,unmapped,no rule
+MOTOR FREIGHT CARRIERS  TRUCK-LOCAL/LONG,37,30498.97,"Services, shipping & fees",medium,services/shipping/fees
+WELDING,36,7600.64,Other / unclear,unmapped,no rule
+GIFT  CARD  NOVELTY  AND SOUVENIR SHOPS,34,16243.59,Restricted items,high,alcohol/gambling/jewelry/cash-like MCCs
+CLEANING AND MAINTENANCE  JANITORIAL SER,34,17731.489999999998,Utilities & facilities,medium,utilities & facilities/maintenance
+OMNI HOTELS,32,27740.36,Lodging,high,lodging MCC
+PACKAGE STORES  BEER  LIQUOR,31,16188.14,Restricted items,high,alcohol/gambling/jewelry/cash-like MCCs
+FAMILY CLOTHING STORES,30,10936.1,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+TOWING SERVICES,28,9502.19,Other / unclear,unmapped,no rule
+SPECIALITY CLEANING POLISHING & SANITATI,28,13480.02,Other / unclear,unmapped,no rule
+INFORMATION RETRIEVAL SERVICES,28,13843.4,Other / unclear,unmapped,no rule
+SHOE STORES,27,11152.99,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+ACCOUNTING  AUDITING AND BOOKKEEPING SER,27,8495.48,"Services, shipping & fees",medium,services/shipping/fees
+FREEZER AND LOCKER MEAT PROVISIONERS,27,30176.920000000002,Other / unclear,unmapped,no rule
+DOCTORS  PHYSICIANS,25,11634.5,Other / unclear,unmapped,no rule
+DETECTIVE AGENCIES & PROTECTIVE AGENCY A,25,9019.6,Other / unclear,unmapped,no rule
+ALOFT,25,8197.44,Other / unclear,unmapped,no rule
+CATHAY PACIFIC,24,31627.36,Airfare & baggage,high,airline MCC
+BUSINESS AND SECRETARIAL SCHOOLS,24,17244.08,Other / unclear,unmapped,no rule
+HOTEL INDIGO,24,8860.07,Lodging,high,lodging MCC
+CAMERA AND PHOTOGRAPHIC SUPPLY STORES,24,15385.27,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+AVIS RENT-A-CAR,22,17652.21,Ground transportation,high,ground transport MCC
+SLEEP INN,22,8506.24,Lodging,high,lodging MCC
+CROWNE PLAZA HOTELS,22,10180.1,Lodging,high,lodging MCC
+GAYLORD OPRYLAND,22,13440.56,Other / unclear,unmapped,no rule
+WOMEN S ACCESSORY AND SPECIALITY SHOPS,21,12046.95,Other / unclear,unmapped,no rule
+COSMETIC STORES,20,6429.1,Other / unclear,unmapped,no rule
+NEWS DEALERS AND NEWSSTANDS,20,17261.91,Office & general supplies,medium,office/school supplies
+COMPUTER MAINTENANCE REPAIR & SERVICES N,20,22795.94,"Services, shipping & fees",medium,services/shipping/fees
+MOTION PICTURE THEATERS,19,6540.47,Other / unclear,unmapped,no rule
+GAYLORD PALMS,19,11690.64,Other / unclear,unmapped,no rule
+SPORTING AND RECREATIONAL CAMPS,19,16283.58,Other / unclear,unmapped,no rule
+MASONRY STONEWORK TILE SETTING PLASTERIN,18,5120.53,Other / unclear,unmapped,no rule
+AUTOGRAPH,18,12599.07,Other / unclear,unmapped,no rule
+RADIO  TELEVISION AND STEREO REPAIR SHOP,18,26450.46,"Services, shipping & fees",medium,services/shipping/fees
+BOWLING ALLEYS,17,5108.610000000001,Other / unclear,unmapped,no rule
+QATAR AIRWAYS,17,25892.98,Airfare & baggage,high,airline MCC
+METAL SERVICE CENTERS AND OFFICES,17,8820.95,Office & general supplies,medium,office/school supplies
+LUXOR HOTEL AND CASINO,17,2923.56,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+FLAMINGO HOTELS,17,5425.4,Lodging,high,lodging MCC
+PRECIOUS STONES AND METALS  WATCHES & JE,16,6040.5599999999995,Other / unclear,unmapped,no rule
+POSTAGE STAMPS,16,1195.99,"Services, shipping & fees",medium,services/shipping/fees
+VIDEO RENTAL STORES,16,917.78,Other / unclear,unmapped,no rule
+DELTA HOTELS,15,2079.32,Lodging,high,lodging MCC
+DIGITAL GOODS - GAMES,15,456.46999999999997,Software & subscriptions,medium,software/subscriptions
+GOLF COURSES-PUBLIC,15,15758.61,Other / unclear,unmapped,no rule
+TRUCK AND UTILITY TRAILER RENTAL,15,4026.23,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+AIR CANADA - AIR CAN,15,14642.4,Airfare & baggage,high,airline MCC
+PHOTOFINISHING LABORATORIES  PHOTO DEVEL,14,8260.4,Other / unclear,unmapped,no rule
+LUGGAGE AND LEATHER GOODS STORES,14,2215.47,Other / unclear,unmapped,no rule
+REAL ESTATE AGENTS AND MANAGERS-RENTALS,14,9146.79,Other / unclear,unmapped,no rule
+FOUR POINTS HOTELS,14,6354.19,Lodging,high,lodging MCC
+MARINAS  MARINE SERVICE/SUPPLIES,14,7372.64,Other / unclear,unmapped,no rule
+CLARION HOTEL,14,1373.7,Lodging,high,lodging MCC
+MOTOR VEHICLE SUPPLIES AND NEW PARTS,14,6484.57,Other / unclear,unmapped,no rule
+STEAMSHIP/CRUISE LINES,13,636.26,Other / unclear,unmapped,no rule
+MICROTEL INN AND SUITES,13,2176.3,Lodging,high,lodging MCC
+CAESARS HOTEL AND CASINO,13,6461.0,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+ORTHOPEDIC GOODS-ARTIFICIAL LIMB STORES,12,6670.5,"Lab, research & medical supplies",high,lab/medical supplies MCC
+LUFTHANSA,12,3236.21,Airfare & baggage,high,airline MCC
+BEAUTY SHOPS AND BARBER SHOPS,12,10430.5,Other / unclear,unmapped,no rule
+CHILD CARE SERVICES,12,1560.0,Other / unclear,unmapped,no rule
+DRURY INN,11,6497.610000000001,Lodging,high,lodging MCC
+ART DEALERS AND GALLERIES,11,3528.87,Other / unclear,unmapped,no rule
+THE RITZ-CARLTON,11,8074.95,Other / unclear,unmapped,no rule
+OPTICIANS,10,2823.33,"Lab, research & medical supplies",high,lab/medical supplies MCC
+AIR FRANCE,10,3472.75,Airfare & baggage,high,airline MCC
+JEWELRY STORES-WATCHES  CLOCKES  AND SIL,10,7609.46,Restricted items,high,alcohol/gambling/jewelry/cash-like MCCs
+SUPER 8 MOTELS,10,1390.8799999999999,Lodging,high,lodging MCC
+WINDOW COVERING  UPHOLSTERY AND DRAPERY,10,10027.369999999999,Other / unclear,unmapped,no rule
+WOMEN S READY TO WEAR STORES,10,2859.5,Other / unclear,unmapped,no rule
+BAYMONT INN & SUITES,10,2350.13,Lodging,high,lodging MCC
+HAWAIIAN AIR,10,7389.9,Other / unclear,unmapped,no rule
+ETHIOPIAN AIRLINES,10,17351.45,Other / unclear,unmapped,no rule
+HERTZ CORPORATION,9,2370.86,Ground transportation,high,ground transport MCC
+AIR INDIA,9,1565.54,Other / unclear,unmapped,no rule
+AUTOMOTIVE BODY REPAIR SHOPS,9,9512.08,"Services, shipping & fees",medium,services/shipping/fees
+CURIO HOTELS,8,3417.63,Lodging,high,lodging MCC
+SWIMMING POOLS-SALES AND SUPPLIES,8,5232.45,Other / unclear,unmapped,no rule
+ROOFING & SIDING  SHEET METAL WORK,8,8181.22,Utilities & facilities,medium,utilities & facilities/maintenance
+CONTRACTORS  CONCRETE WORK,8,4317.52,Other / unclear,unmapped,no rule
+MANDALAY BAY RESORT,8,4060.6899999999996,Lodging,high,lodging MCC
+LAN AIRLINES-LANAIR,8,1187.53,Other / unclear,unmapped,no rule
+QANTAS AIR,8,8698.02,Other / unclear,unmapped,no rule
+COUNTRY INN BY CARLSON,7,2123.1,Lodging,high,lodging MCC
+SCANDINAVIAN AIRLINE SYSTEM (SAS),7,7610.23,Other / unclear,unmapped,no rule
+MARKETPLACES,7,2178.71,Other / unclear,unmapped,no rule
+CANDY  NUT CONFECTIONERY STORES,7,3069.18,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+BUDGET RENT-A-CAR,7,3048.51,Ground transportation,high,ground transport MCC
+ENGINEERING  ARCHITECTURAL AND SURVEYING,7,8782.21,Other / unclear,unmapped,no rule
+INTERCONTINENTAL HOTELS,7,10217.31,Lodging,high,lodging MCC
+USED MERCHANDISE STORES  SECOND HAND STO,7,2817.2,Other / unclear,unmapped,no rule
+AMUSEMENT PARKS  CIRCUSES  CARNIVALS  FO,7,7632.65,Registrations & memberships,medium,registrations/memberships/events
+PIECE GOOD NOTIONS AND OTHER DRY GOODS,7,4201.05,Other / unclear,unmapped,no rule
+HARRAH S HOTELS AND CASINOS,6,3142.46,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+HEALTH AND BEAUTY SPAS,6,6987.5,"Lab, research & medical supplies",high,lab/medical supplies MCC
+RADISSON,6,6710.83,Lodging,high,lodging MCC
+LEGAL SERVICES  ATTORNEYS,6,6434.62,"Services, shipping & fees",medium,services/shipping/fees
+AMERICINN,6,1037.66,Other / unclear,unmapped,no rule
+SONESTA HOTELS,6,8988.369999999999,Lodging,high,lodging MCC
+FAIRFIELD HOTELS,6,1340.0700000000002,Lodging,high,lodging MCC
+ROSEN HOTELS & RESORTS,6,5075.200000000001,Lodging,high,lodging MCC
+ELEMENTARY AND SECONDARY SCHOOLS,6,5585.139999999999,Other / unclear,unmapped,no rule
+BALLY S HOTEL AND CASINO,6,-779.24,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+BELLAGIO,6,3248.17,Other / unclear,unmapped,no rule
+MEN S AND BOYS  CLOTHING AND ACCESSORIES,6,4392.879999999999,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+RED ROOF INNS,5,2768.74,Lodging,high,lodging MCC
+RADISSON BLU,5,2825.0,Lodging,high,lodging MCC
+RELIGIOUS ORGANIZATIONS,5,2663.0,Other / unclear,unmapped,no rule
+AIR CHINA,5,7359.799999999999,Other / unclear,unmapped,no rule
+HILTON INTERNATIONAL,5,6360.29,Lodging,high,lodging MCC
+EMBASSY HOTELS,5,2747.96,Lodging,high,lodging MCC
+FINNAIR,5,3000.01,Other / unclear,unmapped,no rule
+CHIROPRACTORS,5,980.0,Other / unclear,unmapped,no rule
+FAIRMONT HOTELS CORP.,5,6289.9,Lodging,high,lodging MCC
+DAIRY PRODUCTS STORES,5,2585.19,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+DANCE HALLS  STUDIOS  AND SCHOOLS,5,2120.33,Other / unclear,unmapped,no rule
+FRONTIER AIRLINES - FRONTIER,5,547.9200000000001,Airfare & baggage,high,airline MCC
+DRINKING PLACES (ALCOHOLIC BEV.)-BARS TA,5,2272.9900000000002,Meals & refreshments,medium,meals; some may be instructional/research food (needs context)
+PAINTS VARNISHES AND SUPPLIES,5,1939.5900000000001,Other / unclear,unmapped,no rule
+SPIRIT AIRLINES,4,817.61,Airfare & baggage,high,airline MCC
+TRAILER PARKS AND CAMPGROUNDS,4,1956.48,Lodging,high,lodging MCC
+BICYCLE SHOPS-SALES AND SERVICE,4,985.75,Other / unclear,unmapped,no rule
+TIRE RETREADING AND REPAIR SHOPS,4,175.9,"Services, shipping & fees",medium,services/shipping/fees
+KLM,4,4395.74,Airfare & baggage,high,airline MCC
+RODEWAY INNS,4,181.74,Lodging,high,lodging MCC
+KENYA AIRWAYS,4,2812.6800000000003,Airfare & baggage,high,airline MCC
+BOAT DEALERS,4,7601.48,Other / unclear,unmapped,no rule
+THRIFTY RENT-A-CAR,4,1537.79,Ground transportation,high,ground transport MCC
+JAPAN AIR LINES,4,1441.01,Airfare & baggage,high,airline MCC
+ELEMENT,4,1134.93,Other / unclear,unmapped,no rule
+AUSTRIAN AIRLINES,4,506.6,Other / unclear,unmapped,no rule
+IBERIA,4,3772.02,Other / unclear,unmapped,no rule
+GOLDEN NUGGET,4,1401.2,Other / unclear,unmapped,no rule
+TAP AIRLINE (PORTUGAL),4,947.6,Other / unclear,unmapped,no rule
+CHILDREN S AND INFANT S WEAR STORES,4,140.57,Other / unclear,unmapped,no rule
+LAUNDRY  CLEANING  AND GARMENT SERVICES,3,1098.05,Other / unclear,unmapped,no rule
+FONTAINEBLEAU RESORTS,3,1221.09,Lodging,high,lodging MCC
+POI FUNDING TRANSACTIONS EXCLUDING MONEYSEND,3,5654.99,Other / unclear,unmapped,no rule
+MERIDIEN HOTELS,3,890.1,Lodging,high,lodging MCC
+MOTEL 6,3,206.77999999999997,Lodging,high,lodging MCC
+BOAT RENTALS AND LEASE,3,2662.77,Other / unclear,unmapped,no rule
+RELIGIOUS GOODS STORES,3,662.5699999999999,Other / unclear,unmapped,no rule
+CARPET AND UPHOLSTERY CLEANING,3,3148.8,Other / unclear,unmapped,no rule
+WALDORF,3,1063.1399999999999,Other / unclear,unmapped,no rule
+W HOTELS,3,1867.3899999999999,Lodging,high,lodging MCC
+SWISSOTEL,3,2701.41,Other / unclear,unmapped,no rule
+JETBLUE AIRLINES,3,1267.26,Airfare & baggage,high,airline MCC
+AIR CONDITIONING AND REFRIGERATION REPAI,3,2579.34,Other / unclear,unmapped,no rule
+OPTOMETRISTS  OPTHAMOLOGISTS,3,826.0500000000001,Other / unclear,unmapped,no rule
+COMMERCIAL FOOTWEAR,3,862.1100000000001,Other / unclear,unmapped,no rule
+TURKISH AIRLINES,3,1510.17,Other / unclear,unmapped,no rule
+SAUDI ARABIAN AIRLINES,3,708.3,Other / unclear,unmapped,no rule
+KOREAN AIRLINES,3,1672.5099999999998,Other / unclear,unmapped,no rule
+TACA INTERNATIONAL,3,241.2,Other / unclear,unmapped,no rule
+THAI AIRWAYS,2,157.6,Airfare & baggage,high,airline MCC
+AQUARIUMS  SEAQUARIUMS AND DOLPHINARIUMS,2,2129.0,Other / unclear,unmapped,no rule
+EXTENDED STAY AMERICA,2,204.26,Other / unclear,unmapped,no rule
+ASIANA AIRLINES - ASIANA,2,1654.82,Other / unclear,unmapped,no rule
+WRECKING AND SALVAGE YARDS,2,400.32,Other / unclear,unmapped,no rule
+TRAVELODGE,2,1497.0700000000002,Other / unclear,unmapped,no rule
+POLITICAL ORGANIZATIONS,2,1200.0,Other / unclear,unmapped,no rule
+SIXT CAR RENTAL,2,413.14,Ground transportation,high,ground transport MCC
+CLOTHING RENTAL-COSTUMES/UNIFORMS,2,465.37,Clothing & PPE,medium,clothing; PPE usually under industrial supplies
+MONTE CARLO HOTEL AND CASINO,2,369.62,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+SINGAPORE AIRLINES,2,1722.0,Other / unclear,unmapped,no rule
+COUNSELING SERVICE-DEBT  MARRIAGE  PERSO,2,1590.0,Other / unclear,unmapped,no rule
+DIRECT MARKETING INSURANCE SERVICES,2,754.8399999999999,"Services, shipping & fees",medium,services/shipping/fees
+DISNEY RESORTS,2,1242.03,Lodging,high,lodging MCC
+NORWEGIAN AIR SHUTTLE - NORWEGIAN,2,1050.4,Other / unclear,unmapped,no rule
+STAMP & COIN STORES-PHILATELIC & NUMISMA,2,719.0,Other / unclear,unmapped,no rule
+AVIANCA,2,446.84,Other / unclear,unmapped,no rule
+RAMADA INNS,2,435.78,Lodging,high,lodging MCC
+PAWN SHOPS,2,535.0,Restricted items,high,alcohol/gambling/jewelry/cash-like MCCs
+PETROLEUM AND PETROLEUM PRODUCTS,2,999.3,Other / unclear,unmapped,no rule
+VIRGIN ATLANTIC,1,1178.41,Other / unclear,unmapped,no rule
+FUNERAL SERVICE AND CREMATORIES,1,635.5,Other / unclear,unmapped,no rule
+VIDEO GAME ARCADES/ESTABLISHMENTS,1,472.26,Other / unclear,unmapped,no rule
+RAILROADS - FREIGHT,1,2800.0,Ground transportation,high,ground transport MCC
+SWISS,1,288.4,Other / unclear,unmapped,no rule
+AEROMEXICO,1,557.38,Airfare & baggage,high,airline MCC
+VENETIAN RESORT HOTEL AND CASINO,1,-202.95,Lodging,medium,"casino hotel: lodging, but check item text for gaming charges"
+AEROLINEAS ARGENTINAS,1,-178.9,Other / unclear,unmapped,no rule
+WESTJETAIR,1,177.74,Other / unclear,unmapped,no rule
+AER LINGUS,1,1058.31,Other / unclear,unmapped,no rule
+ICELANDAIR,1,389.3,Other / unclear,unmapped,no rule
+CAR RENTAL AGENCIES NOT ELSEWHERE CLASSI,1,1203.51,Ground transportation,high,ground transport MCC
+PARIS LAS VEGAS HOTEL,1,180.27,Lodging,high,lodging MCC
+TYPESETTING PLATE MAKING & RELATED SERVI,1,54.0,Other / unclear,unmapped,no rule
+CANOPY,1,739.5,Other / unclear,unmapped,no rule
+COAST HOTELS,1,1014.04,Lodging,high,lodging MCC
+COMPANIA PANAMENA DE AVIACION (COPA),1,1307.35,Other / unclear,unmapped,no rule
+EMIRATES AIRLINES,1,1666.81,Airfare & baggage,high,airline MCC
+CORRESPONDENCE SCHOOLS,1,3545.61,Other / unclear,unmapped,no rule
+COURT COSTS INCLUDING ALIMONY AND CHILD,1,75.0,"Services, shipping & fees",medium,services/shipping/fees
+AIRPORTS  FLYING FIELDS  AIRPORT TERMINA,1,2509.2,Other / unclear,unmapped,no rule
+ALA MOANA HOTEL,1,810.39,Lodging,high,lodging MCC
+MIYAKO HOTEL,1,618.89,Lodging,high,lodging MCC
+ANTIQUE SHOPS,1,69.5,Other / unclear,unmapped,no rule
+MGM GRAND HOTEL,1,647.41,Lodging,high,lodging MCC
+AUTOMOTIVE PAINT SHOPS,1,75.0,Equipment & tools,medium,equipment/tools/hardware (PPE & supplies overlap)
+ECONOLODGES,1,222.52,Other / unclear,unmapped,no rule
+AUTOMOBILE ASSOCIATIONS,1,235.0,Registrations & memberships,medium,registrations/memberships/events
+EMPLOYMENT AGENCIES  TEMPORARY HELP SUPP,1,550.0,Other / unclear,unmapped,no rule
+HOSPITALS,1,1600.0,Other / unclear,unmapped,no rule

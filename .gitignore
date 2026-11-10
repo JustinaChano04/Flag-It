@@ -218,3 +218,31 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data (downloaded, not committed)
+data/
+
+# OS / tooling
+.DS_Store
+.omc/
+
+# md2pdf tool
+tools/md2pdf/node_modules/
+exports/
+
+# One-off previews of docs (not the docs themselves)
+docs/contracts.html
+docs/contracts.png
+docs/contracts.pdf
+
+# Local working files (planning, personal tooling, agent instructions)
+CLAUDE.md
+docs/plans/
+docs/contracts_.md
+skills-lock.json
+tools/
+.vscode/
+.crossnote/
+.claude/
+.agents/
+anaconda_projects/

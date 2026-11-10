@@ -1,0 +1,1812 @@
+# OSU Purchasing Card rules: structured rule list
+#
+# Source of truth: source/Pcard-Guidelines-2026.05.pdf (OSU Office of Central Procurement, May 2026).
+# Every rule cites the section and page it came from. If a rule and the PDF disagree, the PDF wins.
+#
+# Structure: a RULE is the policy unit (what the PDF says, what the judge cites). Each rule has one or more
+# CHECKS, the evaluation units. Each check has exactly one method and one set of required inputs.
+#
+# Rule fields
+#   id          Stable ID. Never reuse or renumber; retire a rule by setting status: retired.
+#   title       Short name.
+#   topic       Policy area: limits | vendor | process | items | travel.
+#   text        The rule, paraphrased closely from the source.
+#   source      Section and page in the PDF.
+#   severity    What a failure means:
+#               prohibited    - the purchase is not allowed on the Pcard
+#               conditional   - allowed only if a stated condition is met
+#               documentation - allowed, but specific documents/approvals must exist
+#               guidance      - a "should", not a hard rule (checks only flag)
+#   applies_to  Expense categories the rule is routed to (ids below), or [all].
+#   params      Values checks read instead of hard-coding numbers.
+#   hints       Candidate signals in the public OK p-card data. OUR heuristics, not policy.
+#   notes       Caveats, cross-references.
+#   checks      The evaluation units (below).
+#
+# Check fields
+#   id          Rule ID + letter (OSU-TRV-13a). Stable like rule IDs.
+#   ask         The condition that must hold for the check to pass.
+#   pattern     Kind of question, which picks the checker implementation:
+#               threshold         - a value compared to a limit in params
+#               list_membership   - a field looked up in a table or list
+#               line_item         - presence/absence of a kind of line on the receipt
+#               document_presence - a required document or approval exists (and is dated correctly)
+#               aggregation       - a total or pattern over several transactions
+#               cross_reference   - two sources compared (charge date vs delivery date, meals vs trip dates)
+#               purpose           - what something is, who it is for, or why; needs judgment
+#   method      code - deterministic once the required inputs exist
+#               llm  - judgment by the LLM judge (only pattern: purpose)
+#   requires    Inputs that must be present for the check to run. If any is missing, the check reports
+#               "not evaluated: missing <input>" rather than pass/fail.
+#               transaction       - card transaction fields (amount, date, merchant, MCC, item text)
+#               table:<name>      - a maintained reference table (merchant lists, MCC lists, GSA rates)
+#               records:<system>  - OSU system records: works (card, fund, description, trip #), hr, airs
+#                                   (travel requests), asset_mgmt, coi, approvals, accounts_payable
+#               receipt           - receipt or folio extracted into fields (lines, tax, tip, dates, addresses)
+#   uses        (optional) Inputs that improve the evidence when present but are not needed to run.
+#               The LLM judge can decide from item text alone; a receipt makes "unclear" less likely.
+#   scope       What the check looks at: transaction | card | cardholder_window | department_window |
+#               billing_cycle | trip
+#   role        (optional) gate: the check only decides whether later checks run; its result is never
+#               reported as a finding. Gates return true/false (e.g. "item is a gift card").
+#   when        (optional) Run only if another check produced a given result:
+#               {check: <id>, result: true|false|pass|fail|violation|allowed|unclear}, or
+#               {any_of: [<id>, ...], result: ...}. Otherwise the check is "not applicable".
+#   timing      (optional) {due: <deadline>}. Before the deadline a failing check reports "pending", not
+#               fail. Deadlines: purchase+24h | cycle_end | cycle_signoff. Absent = evaluate immediately.
+#               Documents and approvals are attached during reconciliation, so presence checks are due
+#               at cycle sign-off (the document's own date is still compared with the purchase).
+#               A timed gate resolves at its deadline; checks that depend on it wait for it.
+#   screen      (llm checks, optional) Cheap signal that selects candidates for the judge; a match only
+#               means "review". promote_with names a lookup that would make it a code check.
+#   decision    (llm checks) Draft criteria: violation / allowed / unclear (guidance uses flag).
+#               "unclear" is a valid outcome when the evidence does not say what was bought or why.
+#               DRAFT: OUR reading of the policy; OSU's interpretation must confirm them.
+#
+# Status: DRAFT generated from the PDF and not yet reviewed line by line. Review every rule against the
+# cited page before using it for labels or evals.
+
+policy:
+  name: Oklahoma State University Purchasing Card Guidelines
+  version: "2026-05"
+  source_file: source/Pcard-Guidelines-2026.05.pdf
+  scope: Department Pcards (student organization cards, card security, Works roles and record retention are out
+    of scope)
+
+categories:                       # expense taxonomy the rules route to
+  airfare_baggage: Airfare & baggage
+  lodging: Lodging
+  ground_transportation: Ground transportation
+  parking_tolls: Parking & tolls
+  meals_refreshments: Meals & refreshments
+  instructional_research_food: Instructional / research food
+  office_general_supplies: Office & general supplies
+  lab_research_medical_supplies: Lab, research & medical supplies
+  equipment_tools: Equipment & tools
+  clothing_ppe: Clothing & PPE
+  software_subscriptions: Software & subscriptions
+  registrations_memberships: Registrations & memberships
+  services_shipping_fees: Services, shipping & fees
+  utilities_facilities: Utilities & facilities
+  restricted_items: Restricted items
+  other_unclear: Other / unclear
+
+referenced_documents_not_ingested:  # cited by the PDF but not provided; rules depending on them are incomplete
+  - Guidelines for Food and Drink Purchases (AVP Administration & Finance)
+  - OSU Travel Policy 3-0201 / Travel 10.01 and the State Travel Reimbursement Act
+  - University Policy & Procedures 1-1301 (complete weapons / dangerous items list)
+  - Guidelines for the Purchase of Gift Cards (July 2024)
+  - Procurement Guidelines for the Oklahoma Agricultural and Mechanical Colleges (OK Corral)
+  - OSU Policy 1-1204 (professional development retreats)
+
+rules:
+
+  # ---------------------------------------------------------------- limits & splitting
+  - id: OSU-LIM-01
+    title: Single transaction limit
+    topic: limits
+    text: A single transaction on an employee Pcard may not exceed $10,000.
+    source: {section: "Spending Controls - Card Spending Limits", page: 9}
+    severity: prohibited
+    applies_to: [all]
+    params: {max_single_transaction: 10000}
+    notes: Individual cards may have lower limits set by the department; those limits are not in the data.
+    checks:
+      - id: OSU-LIM-01a
+        ask: Charge amount is at most max_single_transaction
+        pattern: threshold
+        method: code
+        requires: [transaction]
+        scope: transaction
+
+  - id: OSU-LIM-02
+    title: Monthly cycle limit
+    topic: limits
+    text: >-
+      The monthly cycle limit on an employee Pcard may not exceed $50,000, so spend in one billing cycle
+      cannot exceed $50,000. A monthly limit above $20,000 requires departmental justification.
+    source: {section: "Spending Controls - Card Spending Limits; Billing Cycle", page: "9, 15"}
+    severity: prohibited
+    applies_to: [all]
+    params: {max_cycle_total: 50000, justification_above: 20000, cycle_start_day: 21, cycle_end_day: 20}
+    notes: >-
+      Billing cycle runs the 21st to the 20th (earlier if the 20th is a weekend/holiday). Needs a reliable
+      per-card ID; the public data only has a name-based proxy, so shared cards will look like one person.
+    checks:
+      - id: OSU-LIM-02a
+        ask: Total charged on the card in one billing cycle is at most max_cycle_total
+        pattern: aggregation
+        method: code
+        requires: [transaction, records:works]
+        scope: billing_cycle
+        timing: {due: cycle_end}
+      - id: OSU-LIM-02b
+        ask: A card monthly limit above justification_above has a departmental justification on file
+        pattern: document_presence
+        method: code
+        requires: [records:works]
+        scope: card
+        timing: {due: cycle_signoff}
+
+  - id: OSU-LIM-03
+    title: Student employee limits
+    topic: limits
+    text: >-
+      Student employee cards need justification for a monthly limit over $2,500 or a single-transaction
+      limit over $500.
+    source: {section: "Spending Controls - Card Spending Limits", page: 9}
+    severity: documentation
+    applies_to: [all]
+    params: {student_single_transaction: 500, student_monthly: 2500}
+    notes: Student cardholders cannot be identified in the public data.
+    checks:
+      - id: OSU-LIM-03a
+        ask: If a student employee card's single-transaction limit is above student_single_transaction, a justification
+          is on file
+        pattern: document_presence
+        method: code
+        requires: [records:hr, records:works]
+        scope: card
+        timing: {due: cycle_signoff}
+      - id: OSU-LIM-03b
+        ask: If a student employee card's monthly limit is above student_monthly, a justification is on file
+        pattern: document_presence
+        method: code
+        requires: [records:hr, records:works]
+        scope: card
+        timing: {due: cycle_signoff}
+
+  - id: OSU-SPL-01
+    title: Split purchases
+    topic: limits
+    text: >-
+      Dividing, or failing to consolidate, a known quantity of goods or services to evade the $10,000 bid
+      threshold is prohibited. Splitting can occur across card swipes, cardholders, projects, Pcard cycles or
+      months, vendors, or chart/funds.
+    source: {section: "Prohibited Goods and Services; Appendix A - Split Purchases", page: "19, 28"}
+    severity: prohibited
+    applies_to: [all]
+    params: {bid_threshold: 10000, lookback_days: 30}
+    hints: >-
+      Candidate groups: same cardholder (or same department) + same canonical merchant, each charge under
+      $10,000, combined total over $10,000 within the lookback window. Intent cannot be proven from data, so
+      every candidate goes to llm/human review. lookback_days is our choice, not policy.
+    checks:
+      - id: OSU-SPL-01a
+        ask: Charges by one cardholder at one merchant, each under bid_threshold, total over bid_threshold within
+          lookback_days (candidate group)
+        role: gate
+        pattern: aggregation
+        method: code
+        requires: [transaction]
+        scope: cardholder_window
+      - id: OSU-SPL-01b
+        ask: Same test across cardholders in one department and across funds (candidate group)
+        role: gate
+        pattern: aggregation
+        method: code
+        requires: [transaction, records:works]
+        scope: department_window
+      - id: OSU-SPL-01c
+        ask: The candidate group is not one known need divided to stay under the threshold
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: cardholder_window
+        when: {any_of: [OSU-SPL-01a, OSU-SPL-01b], result: true}
+        decision:
+          violation: The charges are one known quantity of goods or services (same items, same order or project)
+            divided across swipes, cards, cycles, vendors or funds.
+          allowed: The charges are independent needs (recurring service, separate projects with separate purposes,
+            unrelated items).
+          unclear: Item detail is too generic to tell whether the charges are one need.
+
+  - id: OSU-EQP-01
+    title: Equipment of $5,000 or more must be reported
+    topic: process
+    text: >-
+      For equipment acquisitions of $5,000 or more, copies of the invoices must be sent to Asset Management
+      within 24 hours of purchase.
+    source: {section: "Appendix A - Equipment / Fixed Asset >=$5,000", page: 24}
+    severity: documentation
+    applies_to: [equipment_tools, lab_research_medical_supplies]
+    params: {asset_threshold: 5000, report_within_hours: 24}
+    hints: >-
+      Flag charges >= $5,000 in equipment-like categories. FY2024-25 OSU data shows a pile-up of charges
+      just under $5,000 (177 in $4,500-4,999 vs 50 in $5,000-5,499 in FY2025), which may relate to this
+      threshold.
+    checks:
+      - id: OSU-EQP-01a
+        ask: An equipment charge of asset_threshold or more has an Asset Management record within report_within_hours
+        pattern: document_presence
+        method: code
+        requires: [transaction, records:asset_mgmt]
+        scope: transaction
+        timing: {due: purchase+24h}
+
+  # ---------------------------------------------------------------- general purchasing
+  - id: OSU-GEN-01
+    title: Use OK Corral / system-wide contracts first
+    topic: vendor
+    text: >-
+      Purchases should start with a search of OK Corral. When a system-wide contract or OK Corral punchout
+      exists for the item or service, it should be used, even below the no-bid limit.
+    source: {section: "Using the Pcard - Decision to Use Pcard / OK Corral", page: 10}
+    severity: guidance
+    applies_to: [all]
+    notes: Requires the contract catalog, which we do not have.
+    checks:
+      - id: OSU-GEN-01a
+        ask: Common commodities are bought from a system-wide contract vendor (flag only)
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:contract_vendors]
+        scope: transaction
+
+  - id: OSU-GEN-02
+    title: No purchases from OSU departments or businesses
+    topic: vendor
+    text: >-
+      Purchases from university departments or businesses (e.g. University Dining, University Mailing, the
+      OSU Ticket Office) are prohibited on the Pcard; use the campus vendor invoice (CVI) system.
+    source: {section: "Using the Pcard - Other Considerations; Prohibited list; Appendix A", page: "10, 19, 28"}
+    severity: prohibited
+    applies_to: [all]
+    hints: >-
+      Merchant text containing OSU / OKLAHOMA STATE UNIV (e.g. 'OSU-OKC BOOKSTORE', 'OSU ABRC'). Not every match
+      is a university department (e.g. the alumni association, or 'JOURNYHSE   OSU', which is likely a travel
+      agency descriptor, unverified; see OSU-TRV-03), so matches go to review.
+    checks:
+      - id: OSU-GEN-02a
+        ask: Merchant is not on the OSU department / university business list
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:osu_departments]
+        scope: transaction
+      - id: OSU-GEN-02b
+        ask: A merchant that looks OSU-affiliated but is not on the list is not a university department or business
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        scope: transaction
+        screen:
+          match: merchant ~ /\bOSU\b|OKSTATE|OKLAHOMA STATE U/ and not in osu_departments
+          promote_with: 'already promoted: see check OSU-GEN-02a (table osu_departments)'
+        decision:
+          violation: Seller is an OSU department or university business (e.g. University Dining, University Mailing,
+            OSU Ticket Office, an OSU bookstore, campus parking).
+          allowed: Seller is an external business or organization, even if its name mentions OSU.
+          unclear: Name suggests an OSU affiliation but it cannot be determined whether the seller is a university
+            department/business (e.g. an alumni association or foundation).
+
+  - id: OSU-GEN-03
+    title: Deliver to a university address
+    topic: process
+    text: >-
+      Items must be delivered to a university address. Exceptions need an approved Request for Exception
+      form kept with the receipt.
+    source: {section: "Using the Pcard - Delivery Address", page: 11}
+    severity: documentation
+    applies_to: [all]
+    checks:
+      - id: OSU-GEN-03a
+        ask: Ship-to address is a university address, or an approved exception form is on file
+        pattern: list_membership
+        method: code
+        requires: [receipt, table:university_addresses, records:approvals]
+        scope: transaction
+
+  - id: OSU-GEN-04
+    title: Itemized receipt required
+    topic: process
+    text: >-
+      Every purchase needs an original receipt showing date, merchant name, itemized list of purchases,
+      itemized pricing, and total including shipping and handling.
+    source: {section: "Reconciliation and Receipt Requirements - Receipt Requirements", page: 15}
+    severity: documentation
+    applies_to: [all]
+    checks:
+      - id: OSU-GEN-04a
+        ask: An itemized receipt exists with date, merchant, line items, line prices and total
+        pattern: document_presence
+        method: code
+        requires: [receipt]
+        scope: transaction
+        timing: {due: cycle_signoff}
+      - id: OSU-GEN-04b
+        ask: Receipt total equals the charged amount
+        pattern: cross_reference
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+
+  - id: OSU-GEN-05
+    title: Description and business purpose entered
+    topic: process
+    text: The cardholder must enter a description of the items or services and the business purpose in Works.
+    source: {section: "Works - Cardholder Roles and Responsibilities", page: 13}
+    severity: documentation
+    applies_to: [all]
+    checks:
+      - id: OSU-GEN-05a
+        ask: The item description and business purpose field is filled in
+        pattern: document_presence
+        method: code
+        requires: [records:works]
+        scope: transaction
+        timing: {due: cycle_signoff}
+      - id: OSU-GEN-05b
+        ask: The stated business purpose is specific and consistent with what was bought
+        pattern: purpose
+        method: llm
+        requires: [records:works]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Purpose is missing, generic ("supplies", "misc") or contradicts the items bought.
+          allowed: Purpose names a specific university activity consistent with the items.
+          unclear: Purpose is plausible but the items cannot be seen (no receipt or line detail).
+
+  - id: OSU-GEN-06
+    title: Department cards not for student organizations
+    topic: process
+    text: >-
+      Department Pcards may not be used for student organization purchases; use the organization's own
+      fiduciary-fund Pcard.
+    source: {section: "Appendix A - Purchases for Student Organizations", page: 28}
+    severity: prohibited
+    applies_to: [all]
+    checks:
+      - id: OSU-GEN-06a
+        ask: The purchase was not for a student organization
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt, records:works]
+        scope: transaction
+        decision:
+          violation: Receipt or business purpose shows the purchase was for a student organization's activities
+            or members.
+          allowed: Purchase serves the department's own business purpose.
+          unclear: No business purpose or recipient is stated.
+
+  - id: OSU-GEN-07
+    title: No ledger-9 purchases on department cards
+    topic: process
+    text: A department Pcard must not be used to make ledger-9 purchases.
+    source: {section: "Using the Pcard - Other Considerations", page: 10}
+    severity: prohibited
+    applies_to: [all]
+    notes: Fund/ledger is not in the public data.
+    checks:
+      - id: OSU-GEN-07a
+        ask: A department card charge is not coded to a ledger-9 fund
+        pattern: list_membership
+        method: code
+        requires: [records:works]
+        scope: transaction
+
+  - id: OSU-GEN-08
+    title: Conflict of interest
+    topic: vendor
+    text: >-
+      Cardholders must not purchase from friends or family, from a company owned by any university employee,
+      or from companies where the cardholder has a financial interest.
+    source: {section: "Works - Cardholder Roles and Responsibilities", page: 13}
+    severity: prohibited
+    applies_to: [all]
+    notes: 'Needs the annual Conflict-of-Interest disclosures and a vendor-ownership lookup. Purchases from friends
+      or family have no check: no data source records those relationships.'
+    checks:
+      - id: OSU-GEN-08a
+        ask: Vendor is not in the cardholder's conflict-of-interest disclosures or on the employee-owned vendor
+          list
+        pattern: list_membership
+        method: code
+        requires: [transaction, records:coi, table:employee_owned_vendors]
+        scope: transaction
+
+  - id: OSU-GEN-09
+    title: No card sharing
+    topic: process
+    text: >-
+      Only the cardholder may use the Pcard or its number. Sharing or loaning the card or its number may
+      result in revocation.
+    source: {section: "Security - Safeguard the Card; Works - Cardholder Roles and Responsibilities", page: "8, 13"}
+    severity: prohibited
+    applies_to: [all]
+    hints: >-
+      Shared-looking proxy keys in the public data (placeholder names such as 'CARDHOLDER', very high volume,
+      very broad MCC mix). At OSU, three keys hold ~15% of FY2025 rows. These may be sanctioned department
+      cards; they are review candidates, not violations.
+    checks:
+      - id: OSU-GEN-09a
+        ask: Only the named cardholder used the card
+        pattern: purpose
+        method: llm
+        requires: [transaction, records:works]
+        uses: [receipt]
+        scope: card
+        screen:
+          match: card with a placeholder name, >2000 txns/yr, >15 txns per active day, or >=60 distinct MCCs
+        decision:
+          violation: Evidence the card was used by someone other than the named cardholder (receipt signed or
+            ordered by another person, purpose states a colleague used the card).
+          allowed: Activity is consistent with one person's duties, or the card is a documented department card
+            with a named custodian.
+          unclear: Volume or spending pattern looks like several users but there is no documentation either way.
+            Flag for review; a pattern alone is not a violation.
+
+  - id: OSU-GEN-10
+    title: No restocking fee when the merchant is at fault
+    topic: process
+    text: >-
+      When returning goods, a restocking fee should not be paid if the merchant caused the problem. If the
+      merchant is not responsible, the Pcard may pay the fee. Obtain a credit receipt and confirm the credit posts.
+    source: {section: "Using the Pcard - Returns, Damaged Goods, and Credits", page: 11}
+    severity: conditional
+    applies_to: [all]
+    checks:
+      - id: OSU-GEN-10a
+        ask: A restocking fee was not paid on a return the merchant caused
+        pattern: purpose
+        method: llm
+        requires: [receipt]
+        scope: transaction
+        screen:
+          match: receipt line ~ /RESTOCK/
+        decision:
+          violation: A restocking fee was paid on a return caused by the merchant (damaged, defective or wrong
+            item shipped).
+          allowed: Restocking fee on a return where the merchant was not at fault (e.g. the cardholder ordered
+            the wrong item).
+          unclear: Restocking fee with no stated reason for the return.
+
+  # ---------------------------------------------------------------- prohibited goods & services
+  - id: OSU-PRH-01
+    title: Alcohol
+    topic: items
+    text: Alcohol, bar set-up fees, bartending expenses and other alcohol-related expenses are prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix A - Alcohol", page: "19, 23"}
+    severity: prohibited
+    applies_to: [all]
+    hints: >-
+      MCC 'PACKAGE STORES  BEER  LIQUOR' or 'DRINKING PLACES (ALCOHOLIC BEV.)-BARS...' (72 OSU rows
+      FY2024-25). Alcohol on restaurant or hotel receipts needs the receipt (llm).
+    checks:
+      - id: OSU-PRH-01a
+        ask: MCC is not an alcohol MCC
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_alcohol]
+        scope: transaction
+      - id: OSU-PRH-01b
+        ask: Receipt has no alcohol, bar set-up or bartending lines
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-02
+    title: Cash and cash equivalents
+    topic: items
+    text: Cash, cash advances and ATM transactions are prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 23"}
+    severity: prohibited
+    applies_to: [all]
+    hints: Cash-like MCCs (ATM, quasi-cash, money orders, wire transfer). None appear in OSU FY2024-25 data.
+    checks:
+      - id: OSU-PRH-02a
+        ask: MCC is not a cash or cash-equivalent MCC
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_cash]
+        scope: transaction
+
+  - id: OSU-PRH-03
+    title: Background checks (international)
+    topic: items
+    text: >-
+      International background checks are prohibited on the Pcard (process through OK Corral). Domestic
+      background checks should go through OK Corral but are not prohibited.
+    source: {section: "Appendix A - Background Checks", page: 23}
+    severity: prohibited
+    applies_to: [services_shipping_fees]
+    checks:
+      - id: OSU-PRH-03a
+        ask: A background check is for a US subject through a US provider
+        pattern: list_membership
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-04
+    title: Backorders
+    topic: items
+    text: >-
+      Charges may only be posted for items received by the university or shipped from the merchant's dock;
+      charges for backordered items are prohibited.
+    source: {section: "Appendix A - Backorders", page: 23}
+    severity: prohibited
+    applies_to: [all]
+    checks:
+      - id: OSU-PRH-04a
+        ask: Items were received or shipped on or before the charge date
+        pattern: cross_reference
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+
+  - id: OSU-PRH-05
+    title: Decorations
+    topic: items
+    text: Decorations are prohibited on the Pcard and must be processed through OK Corral.
+    source: {section: "Prohibited Goods and Services; Appendix A - Decorations", page: "19, 24"}
+    severity: prohibited
+    applies_to: [office_general_supplies, other_unclear]
+    checks:
+      - id: OSU-PRH-05a
+        ask: Items are not decorations
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Items whose purpose is decoration (holiday or party decor, balloons, decorative displays).
+          allowed: Functional items that are not decoration (wayfinding signage, equipment, instructional displays).
+          unclear: Event supplies whose decorative vs functional use cannot be told from the text.
+
+  - id: OSU-PRH-06
+    title: Deposits and prepayments
+    topic: items
+    text: >-
+      Deposits and prepayments are prohibited, except where specific sections allow them: subscriptions
+      (single-year; multi-year is OSU-PRH-16), registration fees under OSU-RST-09, and refundable lodging
+      under OSU-TRV-05.
+    source: {section: "Prohibited Goods and Services; Appendix A - Deposits and Prepayments", page: "19, 24"}
+    severity: prohibited
+    applies_to: [all]
+    hints: Item/merchant text such as DEPOSIT, PREPAY, RETAINER.
+    checks:
+      - id: OSU-PRH-06a
+        ask: Goods or services were delivered on or before the charge date, unless the item is a listed exception
+          (subscription, registration, refundable lodging)
+        pattern: cross_reference
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+
+  - id: OSU-PRH-07
+    title: Donations
+    topic: items
+    text: >-
+      Donations of any kind, monetary or non-monetary, are prohibited, including items for student
+      organizations or fundraising.
+    source: {section: "Prohibited Goods and Services; Appendix A - Donations", page: "19, 24"}
+    severity: prohibited
+    applies_to: [registrations_memberships, other_unclear]
+    hints: MCC 'CHARITABLE AND SOCIAL SERVICE ORGANIZATIONS' is a candidate signal, but many such charges are
+      event registrations.
+    checks:
+      - id: OSU-PRH-07a
+        ask: Payment is not a donation (something was received in return)
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        screen:
+          match: MCC = CHARITABLE AND SOCIAL SERVICE ORGANIZATIONS, or item text ~ /DONATION|CONTRIBUTION/
+        decision:
+          violation: Payment to a charity or organization with nothing received in return (donation, fundraiser
+            contribution, sponsorship without a documented benefit).
+          allowed: Event registration, institutional membership, or a sponsorship with a documented return (OSU-RST-14),
+            even when paid to a charitable organization.
+          unclear: Payment to a charitable organization with generic item text and no receipt.
+
+  - id: OSU-PRH-08
+    title: Employee clothing
+    topic: items
+    text: >-
+      Clothing for regular and student employees, including embroidery, alterations and repairs, is
+      prohibited. Employee uniforms that remain OSU property are allowed.
+    source: {section: "Prohibited Goods and Services; Appendix A - Clothing for Employees", page: "19, 23"}
+    severity: prohibited
+    applies_to: [clothing_ppe]
+    checks:
+      - id: OSU-PRH-08a
+        ask: Clothing is not for an employee to keep
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Clothing, embroidery, alterations or clothing repairs for an employee or student employee
+            that the person keeps.
+          allowed: Uniforms that remain OSU property; approved PPE (OSU-RST-08); student clothing under OSU-RST-03.
+          unclear: Clothing purchase where the recipient or ownership is not stated.
+
+  - id: OSU-PRH-09
+    title: Employee service or incentive awards
+    topic: items
+    text: Employee (including student employee) service or incentive awards are prohibited; use OK Corral.
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 24"}
+    severity: prohibited
+    applies_to: [all]
+    checks:
+      - id: OSU-PRH-09a
+        ask: Items are not an employee service or incentive award
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Award, incentive or recognition item for an employee or student employee's service or performance.
+          allowed: None on the Pcard; these go through OK Corral. Student awards (OSU-RST-15) are a separate rule.
+          unclear: Award-type item (plaque, trophy, gift) where the recipient's role is not stated.
+
+  - id: OSU-PRH-10
+    title: Gifts in any form
+    topic: items
+    text: >-
+      Gifts in any form, monetary or non-monetary, are prohibited, including gifts for donors or students,
+      protocol gifts, graduation stoles and cords, honor society or gifted memberships. Gifts authorized in a
+      grant must go through OK Corral.
+    source: {section: "Prohibited Goods and Services; Appendix A - Gifts in Any Form", page: "19, 25"}
+    severity: prohibited
+    applies_to: [all]
+    hints: >-
+      Gift-card item text (e.g. 'Amazon eGift Card', 628 OSU rows FY2024-25) and MCC 'GIFT  CARD  NOVELTY
+      AND SOUVENIR SHOPS'. Gift cards can be legitimate human-subject payments (see OSU-RST-06).
+    checks:
+      - id: OSU-PRH-10a
+        ask: Item is a gift card
+        role: gate
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:gift_card_terms]
+        uses: [receipt]
+        scope: transaction
+      - id: OSU-PRH-10b
+        ask: Items other than gift cards are not gifts
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: 'A gift item (not a gift card) for anyone: donors, students, guests, employees, including
+            stoles, cords and gifted memberships.'
+          allowed: Non-monetary student awards (OSU-RST-15), or items for university use rather than for a recipient
+            to keep.
+          unclear: The recipient or purpose of the item is not stated.
+
+  - id: OSU-PRH-11
+    title: Household moving expenses
+    topic: items
+    text: Household moving expenses and house-hunting trips are prohibited; process on a requisition.
+    source: {section: "Prohibited Goods and Services; Appendix A - Moving Expenses", page: "19, 26"}
+    severity: prohibited
+    applies_to: [services_shipping_fees, other_unclear]
+    checks:
+      - id: OSU-PRH-11a
+        ask: Charge is not household moving or house-hunting
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Household moving or house-hunting costs for an employee.
+          allowed: Moving university equipment or office materials.
+          unclear: Moving or storage service where what was moved is not stated.
+
+  - id: OSU-PRH-12
+    title: Insurance
+    topic: items
+    text: >-
+      Insurance is prohibited (process through Risk and Property Management), except physical damage
+      coverage on an eligible car rental.
+    source: {section: "Prohibited Goods and Services; Appendix A - Insurance; Appendix B - Car Rental", page: "19, 25, 32"}
+    severity: prohibited
+    applies_to: [services_shipping_fees, ground_transportation]
+    hints: MCC 'INSURANCE-SALES & UNDERWRITING' / 'DIRECT MARKETING INSURANCE SERVICES' (98 OSU rows FY2024-25).
+    checks:
+      - id: OSU-PRH-12a
+        ask: MCC is not an insurance MCC
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_insurance]
+        scope: transaction
+      - id: OSU-PRH-12b
+        ask: Insurance on a car rental receipt is physical damage coverage only
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-13
+    title: Items without a business purpose
+    topic: items
+    text: >-
+      Items that do not serve a business purpose are prohibited, e.g. flowers, candy, meals, greeting cards,
+      health care items, personal medical devices, personal expenses.
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 25"}
+    severity: prohibited
+    applies_to: [all]
+    hints: MCC 'FLORISTS' (96 OSU rows FY2024-25) is a candidate signal.
+    checks:
+      - id: OSU-PRH-13a
+        ask: Items serve a business purpose
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        screen:
+          match: MCC = FLORISTS, or item text ~ /FLOWER|CANDY|GREETING CARD/
+        decision:
+          violation: Item with no plausible link to university business (flowers, candy, greeting cards, personal
+            health items) and no business purpose stated.
+          allowed: Item with a documented business purpose that is not on another prohibited list (e.g. plants
+            for a horticulture course), including food and drink that meet the food guidelines or have approval
+            (OSU-RST-05).
+          unclear: Item text is generic or the business purpose is missing.
+
+  - id: OSU-PRH-14
+    title: Late fees and penalties
+    topic: items
+    text: Late fees, finance charges and other payment penalties are prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 25"}
+    severity: prohibited
+    applies_to: [all]
+    hints: Item text such as LATE FEE, FINANCE CHARGE, PENALTY (no OSU matches FY2024-25).
+    checks:
+      - id: OSU-PRH-14a
+        ask: No late fee, finance charge, interest or penalty line
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-15
+    title: Individual, multi-year and retail club memberships
+    topic: items
+    text: >-
+      Nontransferable individual memberships are prohibited unless documented as transferable to another
+      employee. Institutional memberships are permitted if clearly identified as institutional with the full
+      organization name. Multi-year memberships, Amazon Prime memberships and Sam's Club memberships are
+      prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix A - Memberships", page: "19, 26"}
+    severity: prohibited
+    applies_to: [registrations_memberships]
+    hints: >-
+      Merchant 'Amazon Prime' / 'AMAZON PRIME PMTS' (152 OSU rows FY2024-25) and 'SAMS CLUB RENEWAL'
+      (2 rows) are direct matches. Individual vs institutional needs the receipt (llm).
+    checks:
+      - id: OSU-PRH-15a
+        ask: Merchant is not a prohibited membership (Amazon Prime, Sam's Club)
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:prohibited_membership_merchants]
+        scope: transaction
+      - id: OSU-PRH-15b
+        ask: Membership term is at most one year
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+      - id: OSU-PRH-15c
+        ask: Membership is institutional or documented as transferable
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt, records:works]
+        scope: transaction
+        decision:
+          violation: Membership is in an individual's name and not documented as transferable.
+          allowed: Membership is clearly institutional (full organization name) or documented as transferable
+            to another employee.
+          unclear: Membership type is not stated.
+
+  - id: OSU-PRH-16
+    title: Multi-year commitments
+    topic: items
+    text: >-
+      Multi-year expenses such as leases (including copier leases), subscriptions (including software),
+      warranties and vehicle tag renewals are prohibited on the Pcard; process through OK Corral.
+    source: {section: "Prohibited Goods and Services; Appendix A - Copier Leases, Subscriptions, Warranty, Tag
+        Renewals", page: "19, 24, 28"}
+    severity: prohibited
+    applies_to: [software_subscriptions, equipment_tools, services_shipping_fees]
+    checks:
+      - id: OSU-PRH-16a
+        ask: Lease, subscription, warranty or renewal term is at most 12 months
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-17
+    title: Oklahoma sales tax
+    topic: items
+    text: >-
+      Oklahoma sales tax is prohibited on any purchase (in-state, out-of-state or online vendors). OSU is not
+      exempt from other states' or countries' sales tax.
+    source: {section: "Prohibited Goods and Services; Appendix A - Oklahoma Sales Tax", page: "19, 26"}
+    severity: prohibited
+    applies_to: [all]
+    notes: Only visible on the receipt. See OSU-TRV-07 for Oklahoma lodging taxes.
+    checks:
+      - id: OSU-PRH-17a
+        ask: No Oklahoma sales tax line
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-18
+    title: Personal purchases and personal medical devices
+    topic: items
+    text: >-
+      Purchases for personal use are prohibited under any circumstances, including reading glasses and
+      personal medical devices (back, neck, knee or carpal tunnel braces, eyeglasses, etc.).
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 26"}
+    severity: prohibited
+    applies_to: [all]
+    checks:
+      - id: OSU-PRH-18a
+        ask: Items are not for personal use
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Item for personal use (reading glasses, braces, personal electronics for home use, personal
+            travel).
+          allowed: Item used for university business that remains university property.
+          unclear: Consumer item with no stated business use.
+
+  - id: OSU-PRH-19
+    title: Postage stamps
+    topic: items
+    text: Postage stamps are prohibited; use the campus central mailing department via CVI.
+    source: {section: "Prohibited Goods and Services; Appendix A - Postage Stamps", page: "19, 26"}
+    severity: prohibited
+    applies_to: [services_shipping_fees]
+    hints: MCC 'POSTAGE STAMPS' (48 OSU rows FY2024-25).
+    checks:
+      - id: OSU-PRH-19a
+        ask: MCC is not POSTAGE STAMPS
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_postage]
+        scope: transaction
+      - id: OSU-PRH-19b
+        ask: Receipt has no postage stamp lines
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-20
+    title: Professional services (Title 18)
+    topic: items
+    text: >-
+      Licensed professional services are prohibited, e.g. CPA services, physical therapy, speech pathology,
+      legal fees and services, architecture, engineering, land surveying and similar licensed professions.
+    source: {section: "Prohibited Goods and Services; Appendix A - Professional Services (Title 18)", page: "19, 26"}
+    severity: prohibited
+    applies_to: [services_shipping_fees]
+    hints: >-
+      MCCs for legal, accounting, engineering/architectural/surveying, doctors, chiropractors, optometrists
+      (147 OSU rows FY2024-25). Some may be allowed non-licensed services, so matches go to review.
+    checks:
+      - id: OSU-PRH-20a
+        ask: MCC is not an unambiguously licensed-profession MCC (legal, accounting, engineering/architecture/surveying)
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_title18]
+        scope: transaction
+      - id: OSU-PRH-20b
+        ask: Other services are not licensed (Title 18) professional services
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Service is performed by a licensed profession (CPA, attorney, physical therapist, speech
+            pathologist, architect, engineer, land surveyor or similar).
+          allowed: Non-licensed service such as training, speaking or horseshoeing (OSU-RST-11).
+          unclear: The provider's license status cannot be determined.
+
+  - id: OSU-PRH-21
+    title: Salary, wages and benefits
+    topic: items
+    text: Salary, wages and benefits may not be paid with the Pcard.
+    source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 27"}
+    severity: prohibited
+    applies_to: [all]
+    checks:
+      - id: OSU-PRH-21a
+        ask: Payment is not salary, wages or benefits
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Payment to an individual as compensation for work (wages, stipends, benefits).
+          allowed: Payment to a business for a non-licensed service (OSU-RST-11).
+          unclear: Payment to an individual where the nature of the payment is not stated.
+
+  - id: OSU-PRH-22
+    title: Trade-ins
+    topic: items
+    text: Purchases involving the trade-in of a university asset are prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix A - Trade-ins", page: "19, 28"}
+    severity: prohibited
+    applies_to: [equipment_tools]
+    checks:
+      - id: OSU-PRH-22a
+        ask: No trade-in credit line
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-PRH-23
+    title: Weapons and ammunition
+    topic: items
+    text: >-
+      Weapons and ammunition are prohibited, including firearms, archery equipment, slingshots, martial arts
+      devices, fireworks, explosives and dangerous chemicals. Purchase on a requisition.
+    source: {section: "Prohibited Goods and Services; Appendix A - Weapons and/or Ammunition", page: "19, 28"}
+    severity: prohibited
+    applies_to: [equipment_tools, lab_research_medical_supplies, restricted_items]
+    notes: The complete list is in Policy 1-1301 (not ingested). "Dangerous chemicals" overlaps with normal lab
+      purchasing; needs judgment.
+    checks:
+      - id: OSU-PRH-23a
+        ask: No item matches the weapons and explosives term list
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:weapon_terms]
+        scope: transaction
+      - id: OSU-PRH-23b
+        ask: Chemicals or equipment are not dangerous items under Policy 1-1301
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: A dangerous chemical, or a weapon-like item the term list in OSU-PRH-23a missed (e.g. a martial
+            arts device described without keywords).
+          allowed: Not defined here; routine lab chemicals depend on Policy 1-1301, which has not been ingested.
+          unclear: Chemicals or equipment whose hazard classification under Policy 1-1301 is unknown. Escalate
+            rather than decide.
+
+  # ---------------------------------------------------------------- conditional purchases
+  - id: OSU-RST-01
+    title: Apple products through the University Store
+    topic: items
+    text: On the Stillwater campus, Apple products should be purchased through the University Store if available.
+    source: {section: "Appendix A - Apple Products", page: 23}
+    severity: guidance
+    applies_to: [equipment_tools, office_general_supplies]
+    checks:
+      - id: OSU-RST-01a
+        ask: Apple products are bought through the University Store when it stocks them (flag only)
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:university_store_catalog]
+        scope: transaction
+
+  - id: OSU-RST-02
+    title: Certifications and licenses
+    topic: items
+    text: >-
+      If a license or certification was required as a condition of employment before hiring, the employee
+      pays (initial and renewals). If it became required later, OSU may pay the initial fee; renewals are the
+      employee's responsibility.
+    source: {section: "Appendix A - Certifications & Licenses", page: 23}
+    severity: conditional
+    applies_to: [registrations_memberships, services_shipping_fees]
+    checks:
+      - id: OSU-RST-02a
+        ask: OSU pays only an initial license fee that became required after hire
+        pattern: purpose
+        method: llm
+        requires: [transaction, records:hr]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: OSU paid a renewal, or a license that was required at hire.
+          allowed: Initial fee for a license or certification that became required after hire.
+          unclear: Whether the license was required at hire is not known.
+
+  - id: OSU-RST-03
+    title: Clothing for students
+    topic: items
+    text: >-
+      Clothing for students may be purchased on a ledger-9 fund. Otherwise, departments may buy clothing for
+      students representing the university at official events only if each item, including embellishments,
+      costs $25 or less; more expensive items go through OK Corral.
+    source: {section: "Appendix A - Clothing for Students", page: 24}
+    severity: conditional
+    applies_to: [clothing_ppe]
+    params: {max_per_item: 25}
+    checks:
+      - id: OSU-RST-03a
+        ask: Clothing for students not on a ledger-9 fund is at most max_per_item per item
+        pattern: threshold
+        method: code
+        requires: [receipt, records:works]
+        scope: transaction
+      - id: OSU-RST-03b
+        ask: The clothing is for students representing OSU at an official event
+        pattern: purpose
+        method: llm
+        requires: [transaction, records:works]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Clothing is for employees, or for students outside an official event, on a non-ledger-9 fund.
+          allowed: Clothing for students representing OSU at an official event, or bought on a ledger-9 fund.
+          unclear: Recipients or event are not stated.
+
+  - id: OSU-RST-04
+    title: Credit card processing fees
+    topic: items
+    text: Credit card processing / convenience fees are limited to 4%.
+    source: {section: "Appendix A - Credit Card Processing Fees", page: 24}
+    severity: conditional
+    applies_to: [all]
+    params: {max_fee_pct: 4}
+    checks:
+      - id: OSU-RST-04a
+        ask: Processing or convenience fee is at most max_fee_pct of the subtotal
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-RST-05
+    title: Food and drink must follow the food guidelines
+    topic: items
+    text: >-
+      Food, drink and related items must comply with the AVP food guidelines. Otherwise a Vice President or
+      Dean approval letter is required before purchase and attached to the receipt; delegated approval is not
+      allowed. Coffee service must meet the food criteria. Food for professional development retreats needs
+      prior Dean/VP approval. Food for student retreats is allowed on 9 funds; other funds need prior
+      Dean/VP approval.
+    source: {section: "Appendix A - Food, Drinks, and Related Items", page: 24}
+    severity: conditional
+    applies_to: [meals_refreshments, instructional_research_food]
+    notes: The detailed criteria live in the food guidelines PDF, which has not been ingested.
+    checks:
+      - id: OSU-RST-05a
+        ask: A VP or Dean approval dated before the purchase is on file
+        role: gate
+        pattern: document_presence
+        method: code
+        requires: [records:approvals]
+        scope: transaction
+        timing: {due: cycle_signoff}
+      - id: OSU-RST-05b
+        ask: The food purchase meets the AVP food guidelines
+        pattern: purpose
+        method: llm
+        requires: [transaction, table:food_guidelines]
+        uses: [receipt, records:works]
+        scope: transaction
+        when: {check: OSU-RST-05a, result: false}
+        decision:
+          violation: Purchase falls outside the food guidelines (no prior VP/Dean approval exists, per OSU-RST-05a).
+          allowed: Purchase meets the food guidelines.
+          unclear: Default until the food guidelines document is ingested.
+
+  - id: OSU-RST-06
+    title: Gift cards for human subjects
+    topic: items
+    text: >-
+      Gift cards for human-subject payments are allowed only with OSU Controller preapproval, a copy of which
+      goes to the Pcard Administrator before purchase. Each card is limited to $100.
+    source: {section: "Appendix A - Payments to Human Subjects", page: 25}
+    severity: conditional
+    applies_to: [all]
+    params: {max_per_card: 100}
+    checks:
+      - id: OSU-RST-06a
+        ask: Each human-subject gift card is at most max_per_card
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+        when: {check: OSU-PRH-10a, result: true}
+      - id: OSU-RST-06b
+        ask: Controller preapproval is on file before the purchase
+        pattern: document_presence
+        method: code
+        requires: [records:approvals]
+        scope: transaction
+
+        when: {check: OSU-PRH-10a, result: true}
+        timing: {due: cycle_signoff}
+    notes: Runs on every gift card detected by OSU-PRH-10a. A gift card without Controller preapproval fails OSU-RST-06b,
+      which is also the gift-card case of OSU-PRH-10.
+
+  - id: OSU-RST-07
+    title: Gasoline and fuel
+    topic: items
+    text: >-
+      Fuel is allowed for department equipment and gas cans and for eligible rental cars. Fuel for personal
+      vehicles and university vehicles is prohibited.
+    source: {section: "Appendix A - Gasoline / Fuel; Appendix B - Car Rental", page: "25, 32"}
+    severity: conditional
+    applies_to: [ground_transportation, equipment_tools]
+    checks:
+      - id: OSU-RST-07a
+        ask: Fuel is for department equipment, gas cans or an eligible rental car
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt, records:airs]
+        scope: transaction
+        screen:
+          match: MCC ~ /SERVICE STATIONS|AUTOMATED FUEL/
+        decision:
+          violation: Fuel for a personal or university vehicle, or for a rental car that is not an eligible rental.
+          allowed: Fuel for department equipment, gas cans, or an eligible rental car.
+          unclear: Fuel purchase with no stated use.
+
+  - id: OSU-RST-08
+    title: Personal protective equipment
+    topic: items
+    text: >-
+      PPE (knee pads, ice cleats, lab coats, muck boots, lumbar support, gloves, etc.) may be allowed if
+      approved by the cardholder's department or college; items remain university property.
+    source: {section: "Appendix A - Personal Protective Equipment", page: 26}
+    severity: conditional
+    applies_to: [clothing_ppe, lab_research_medical_supplies, equipment_tools]
+    checks:
+      - id: OSU-RST-08a
+        ask: PPE has department or college approval on file
+        pattern: document_presence
+        method: code
+        requires: [records:approvals]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-RST-09
+    title: Registration fees
+    topic: items
+    text: >-
+      Registration for conferences, meetings, seminars, training, entry fees, event tickets and booth rentals
+      may be paid at or after the event. Prepaying is allowed only if documented under Option 1 (early
+      registration discount AND a substitute may attend AND 100% refund if canceled) or Option 2 (prepayment
+      required to attend AND purchase orders not accepted).
+    source: {section: "Appendix A - Registration Fees", page: 27}
+    severity: conditional
+    applies_to: [registrations_memberships]
+    checks:
+      - id: OSU-RST-09a
+        ask: Registration paid before the event has Option 1 or Option 2 documentation on file
+        pattern: document_presence
+        method: code
+        requires: [transaction, receipt, records:approvals]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-RST-10
+    title: Items for resale
+    topic: items
+    text: Only areas holding a sales tax permit may purchase items for resale.
+    source: {section: "Appendix A - Resale", page: 27}
+    severity: conditional
+    applies_to: [all]
+    checks:
+      - id: OSU-RST-10a
+        ask: The department holds a sales tax permit
+        role: gate
+        pattern: list_membership
+        method: code
+        requires: [records:works, table:sales_tax_permits]
+        scope: transaction
+      - id: OSU-RST-10b
+        ask: The purchase is not for resale
+        pattern: purpose
+        method: llm
+        requires: [transaction, records:works]
+        uses: [receipt]
+        scope: transaction
+        when: {check: OSU-RST-10a, result: false}
+        decision:
+          violation: Items are bought for resale (the department holds no sales tax permit, per OSU-RST-10a).
+          allowed: Items are for the department's own use.
+          unclear: Intended use of the items is not stated.
+
+  - id: OSU-RST-11
+    title: Service providers (non-Title 18)
+    topic: items
+    text: >-
+      Non-licensed services (training fees, speaker fees, etc.) are typically allowed. A provider's travel
+      expenses must be included on the provider's invoice, not paid separately. A plaque or certificate for a
+      provider is allowed only if they receive no compensation or paid travel. Tokens of appreciation for OSU
+      employees are prohibited.
+    source: {section: "Appendix A - Service Provider (non-Title 18)", page: 27}
+    severity: conditional
+    applies_to: [services_shipping_fees]
+    checks:
+      - id: OSU-RST-11a
+        ask: Service provider payment follows the travel, plaque and token rules
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Provider's travel paid separately on the Pcard; a token of appreciation for an OSU employee;
+            a plaque or certificate for a provider who was paid.
+          allowed: Fee for a non-licensed service; provider travel included on the provider's invoice; a plaque
+            for an unpaid provider.
+          unclear: Service payment where it is unclear whether the provider is licensed (then check OSU-PRH-20).
+
+  - id: OSU-RST-12
+    title: Outbound shipping
+    topic: items
+    text: Outbound shipping is allowed, but cardholders should first check with the campus central mailing department.
+    source: {section: "Appendix A - Shipping, Outbound", page: 27}
+    severity: guidance
+    applies_to: [services_shipping_fees]
+    checks:
+      - id: OSU-RST-12a
+        ask: Outbound commercial shipping (informational flag)
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:mcc_courier]
+        scope: transaction
+
+  - id: OSU-RST-13
+    title: Space heaters
+    topic: items
+    text: >-
+      Space heaters (utility, portable space, portable heaters) require written preapproval from OSU
+      Environmental Health & Safety, attached to the receipt. No exceptions.
+    source: {section: "Appendix A - Space Heater", page: 27}
+    severity: conditional
+    applies_to: [equipment_tools, utilities_facilities, office_general_supplies]
+    hints: Item text 'HEATER' also matches water and aquarium heaters, so matches need llm review.
+    checks:
+      - id: OSU-RST-13a
+        ask: A space heater purchase has written EHS preapproval on file
+        pattern: document_presence
+        method: code
+        requires: [receipt, records:approvals]
+        scope: transaction
+        timing: {due: cycle_signoff}
+
+  - id: OSU-RST-14
+    title: Sponsorships
+    topic: items
+    text: Sponsorships are allowed only if OSU receives something in return, and that must be documented.
+    source: {section: "Appendix A - Sponsorships", page: 28}
+    severity: conditional
+    applies_to: [registrations_memberships, other_unclear]
+    checks:
+      - id: OSU-RST-14a
+        ask: A sponsorship has a documented return on file
+        pattern: document_presence
+        method: code
+        requires: [records:approvals]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-RST-15
+    title: Student awards
+    topic: items
+    text: >-
+      Non-monetary awards (trophies, plaques, certificates) given to students in their capacity as students
+      are allowed.
+    source: {section: "Appendix A - Student Awards", page: 28}
+    severity: conditional
+    applies_to: [office_general_supplies, other_unclear]
+    notes: >-
+      The source only lists what is allowed. Monetary awards are not addressed here, but cash (OSU-PRH-02)
+      and gifts (OSU-PRH-10) are prohibited.
+    checks:
+      - id: OSU-RST-15a
+        ask: Student awards are non-monetary
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt]
+        scope: transaction
+        decision:
+          violation: Monetary award (cash, gift card) to a student.
+          allowed: Trophies, plaques or certificates given to students in their capacity as students.
+          unclear: Award whose form (monetary or not) is not stated.
+
+  - id: OSU-RST-16
+    title: Vehicle tag renewals
+    topic: items
+    text: >-
+      Initial tag/registration for vehicles, boats, ATVs etc. must be paid by Asset Management. Renewals may
+      go on the Pcard; multi-year renewals are prohibited.
+    source: {section: "Appendix A - Tag or Registration Renewals", page: 28}
+    severity: conditional
+    applies_to: [services_shipping_fees]
+    checks:
+      - id: OSU-RST-16a
+        ask: Vehicle tag payment is a renewal of at most one year
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-RST-17
+    title: Tips
+    topic: items
+    text: Tips are limited to 20%, paid as a single payment with the service, with a proper receipt.
+    source: {section: "Appendix A - Tips; Appendix B - Ground Transportation", page: "28, 31"}
+    severity: conditional
+    applies_to: [ground_transportation, meals_refreshments, services_shipping_fees]
+    params: {max_tip_pct: 20}
+    checks:
+      - id: OSU-RST-17a
+        ask: Tip is at most max_tip_pct of the service amount
+        pattern: threshold
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-RST-18
+    title: Data plans
+    topic: items
+    text: Data plans are allowed for university-owned devices.
+    source: {section: "Appendix A - Data Plans", page: 24}
+    severity: conditional
+    applies_to: [utilities_facilities, software_subscriptions]
+    notes: The source states the allowed case; plans for personal devices are implied not to be allowed.
+    checks:
+      - id: OSU-RST-18a
+        ask: The device on the data plan is in the university asset inventory
+        pattern: list_membership
+        method: code
+        requires: [receipt, records:asset_mgmt]
+        scope: transaction
+
+  # ---------------------------------------------------------------- travel
+  - id: OSU-TRV-01
+    title: Travel request approved before purchase
+    topic: travel
+    text: >-
+      Airfare, out-of-state lodging and out-of-state ground transportation need an Out-of-State or
+      Out-of-Country Travel Request fully approved (traveler plus two approvals; out-of-country also the Dean
+      of OSU Global) before purchase. In-state travel is exempt for lodging and ground transportation.
+    source: {section: "Appendix B - Airfare, Lodging, Ground Transportation", page: "29, 30, 31"}
+    severity: documentation
+    applies_to: [airfare_baggage, lodging, ground_transportation]
+    checks:
+      - id: OSU-TRV-01a
+        ask: For airfare, and for out-of-state lodging or ground transportation, an approved travel request exists
+          dated on or before the purchase (in-state lodging and ground transport are exempt)
+        pattern: cross_reference
+        method: code
+        requires: [transaction, records:airs]
+        scope: trip
+
+  - id: OSU-TRV-02
+    title: Trip number in Works
+    topic: travel
+    text: The trip number (T#) must be entered in Works for airfare, lodging, rideshare and car rental charges.
+    source: {section: "Appendix B", page: "29, 31, 33"}
+    severity: documentation
+    applies_to: [airfare_baggage, lodging, ground_transportation]
+    checks:
+      - id: OSU-TRV-02a
+        ask: Trip number is entered in Works
+        pattern: document_presence
+        method: code
+        requires: [records:works]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-TRV-03
+    title: Airfare through the contracted agency
+    topic: travel
+    text: >-
+      Airfare may be bought through Anthony Travel, the contracted travel agency. If another vendor is used,
+      a printed quote for the lowest fare available through Anthony Travel is required, showing the purchase
+      was cheaper.
+    source: {section: "Appendix B - Airfare and Baggage Fees", page: 29}
+    severity: documentation
+    applies_to: [airfare_baggage]
+    params: {contracted_agency: "Anthony Travel"}
+    hints: >-
+      'Anthony Travel' never appears as an OSU merchant string in FY2024-25, so the agency's processor
+      descriptor must be confirmed before this check can run (candidate: 'JOURNYHSE   OSU', unverified).
+    checks:
+      - id: OSU-TRV-03a
+        ask: Airfare is from the contracted agency, or a lowest-fare quote is on file
+        pattern: list_membership
+        method: code
+        requires: [transaction, table:contracted_agency_descriptors, records:airs]
+        scope: transaction
+
+  - id: OSU-TRV-04
+    title: Economy class, no luxury options
+    topic: travel
+    text: >-
+      All flights, including international, are limited to economy class. Early Bird check-in, upgraded
+      seating and similar luxury options are prohibited unless there is a valid medical or business reason.
+      Overweight or extra personal baggage is not permitted; normal baggage fees are allowed.
+    source: {section: "Appendix B - Airfare and Baggage Fees", page: 29}
+    severity: prohibited
+    applies_to: [airfare_baggage]
+    hints: >-
+      Merchant 'DELTA AIR   UPGRADE' (4 OSU rows). Small airline charges (MCC 'AIRLINES  AIR CARRIERS',
+      median ~$5) are mostly fees and could include upgrades; needs the receipt.
+    checks:
+      - id: OSU-TRV-04a
+        ask: Receipt shows a non-economy fare or an upgrade, early-bird, priority or extra-baggage line
+        role: gate
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+      - id: OSU-TRV-04b
+        ask: A documented medical or business reason for it is on file
+        pattern: document_presence
+        method: code
+        requires: [receipt, records:approvals]
+        scope: transaction
+        when: {check: OSU-TRV-04a, result: true}
+        timing: {due: cycle_signoff}
+
+  - id: OSU-TRV-05
+    title: Lodging prepayment must be refundable
+    topic: travel
+    text: >-
+      Lodging may be prepaid only if refundable on cancellation, with the hotel's cancellation policy
+      attached to the receipt.
+    source: {section: "Appendix B - Lodging, Prepayment", page: 30}
+    severity: conditional
+    applies_to: [lodging]
+    checks:
+      - id: OSU-TRV-05a
+        ask: Lodging charged before check-in has a refundable cancellation policy attached
+        pattern: document_presence
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-TRV-06
+    title: Room rate limited to GSA rate
+    topic: travel
+    text: >-
+      Lodging is limited to the federal GSA rate for the city/county unless documentation is attached (event
+      announcement or registration showing the rate, proof the event and rooms are at the same facility, or a
+      Self-Designated Lodging Form). Overpayment may have to be reimbursed. For Airbnb/VRBO, include all
+      service and cleaning fees when comparing.
+    source: {section: "Appendix B - Lodging, Room Rate", page: 30}
+    severity: conditional
+    applies_to: [lodging]
+    params: {rate_table: "GSA per diem lodging rates"}
+    notes: A code pre-check is possible with a GSA rate table and the hotel location, neither of which is in the
+      public data.
+    checks:
+      - id: OSU-TRV-06a
+        ask: Nightly rate is at most the GSA rate for the city and month, or rate documentation is on file
+        pattern: threshold
+        method: code
+        requires: [receipt, table:gsa_rates, records:approvals]
+        scope: transaction
+
+  - id: OSU-TRV-07
+    title: No taxes on Oklahoma lodging
+    topic: travel
+    text: >-
+      No taxes (sales, hotel occupancy, entertainment, city, etc.) should be paid on lodging in Oklahoma.
+      Tribal fees, Tourism Improvement (TIF/TID) fees and PACE fees are allowed.
+    source: {section: "Appendix B - Lodging, Other Taxes and Fees", page: 31}
+    severity: prohibited
+    applies_to: [lodging]
+    checks:
+      - id: OSU-TRV-07a
+        ask: Oklahoma lodging folio has no tax lines other than tribal, TIF/TID or PACE fees
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-TRV-08
+    title: No personal charges on lodging
+    topic: travel
+    text: >-
+      Personal lodging charges (food, drinks, laundry, safe usage, pet fees, etc.) are prohibited on the Pcard.
+    source: {section: "Prohibited Goods and Services; Appendix B - Lodging", page: "19, 30"}
+    severity: prohibited
+    applies_to: [lodging]
+    checks:
+      - id: OSU-TRV-08a
+        ask: Folio has no personal lines (food, drinks, laundry, safe, pet fees)
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-TRV-09
+    title: Combined registration and lodging
+    topic: travel
+    text: >-
+      If registration and hotel are billed as a single combined charge, the Pcard cannot be used; room rate
+      and registration must be separately itemized.
+    source: {section: "Appendix B - Lodging, Combined Receipts", page: 30}
+    severity: prohibited
+    applies_to: [lodging, registrations_memberships]
+    checks:
+      - id: OSU-TRV-09a
+        ask: No single charge contains both registration and lodging lines
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-TRV-10
+    title: Late cancellation and no-show fees
+    topic: travel
+    text: >-
+      Cancellation fees, no-show fees or unused rooms caused by personal reasons or negligence must be
+      reimbursed by the traveler or cardholder. Business or emergency reasons documented and approved by the
+      VP or Dean may be exempt.
+    source: {section: "Appendix B - Lodging, Consequences for Late Cancellation", page: 30}
+    severity: conditional
+    applies_to: [lodging]
+    checks:
+      - id: OSU-TRV-10a
+        ask: A no-show or late-cancellation fee is reimbursed or has a VP/Dean business-reason approval
+        pattern: document_presence
+        method: code
+        requires: [receipt, records:approvals]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-TRV-11
+    title: Rented or leased lodging over five nights
+    topic: travel
+    text: >-
+      Renting or leasing accommodation for more than five nights (rooms, apartments, Airbnb, VRBO) requires
+      preapproval from the Office of Central Procurement.
+    source: {section: "Appendix B - Rented or Leased Lodging Accommodations", page: 31}
+    severity: documentation
+    applies_to: [lodging]
+    params: {max_nights_without_preapproval: 5}
+    checks:
+      - id: OSU-TRV-11a
+        ask: A rental or lease over max_nights_without_preapproval nights has Central Procurement preapproval
+        pattern: document_presence
+        method: code
+        requires: [receipt, records:approvals]
+        scope: transaction
+
+        timing: {due: cycle_signoff}
+
+  - id: OSU-TRV-12
+    title: Rideshare and transportation services
+    topic: travel
+    text: >-
+      Rideshare, taxi and shuttle are allowed for in-state and out-of-state business travel, not personal use.
+      Deposits and prepayments are prohibited. A receipt is required regardless of amount and must be uploaded
+      to AIRS. Upgrades such as priority pickup are prohibited unless there is a medical or business reason.
+    source: {section: "Appendix B - Ground Transportation", page: 31}
+    severity: conditional
+    applies_to: [ground_transportation]
+    checks:
+      - id: OSU-TRV-12a
+        ask: Rideshare receipt has no priority or upgrade line and was not prepaid (tip cap is OSU-RST-17a)
+        pattern: line_item
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+      - id: OSU-TRV-12b
+        ask: The ride was for university business
+        pattern: purpose
+        method: llm
+        requires: [transaction]
+        uses: [receipt, records:airs]
+        scope: transaction
+        decision:
+          violation: The ride was personal (not between airport, hotel, event or business sites).
+          allowed: Ride between business locations during an approved trip, or local business travel.
+          unclear: Ride purpose or trip context is not stated.
+
+  - id: OSU-TRV-13
+    title: Car rental restrictions
+    topic: travel
+    text: >-
+      Car rentals are not allowed for in-state travel. Each rental needs written business justification; for
+      out-of-state car travel, an airfare quote showing the rental is cheaper must be obtained before purchase.
+      Deposits and prepayments are prohibited. The Pcard may not be used if the trip mixes business and
+      personal travel; personal miles mean the rental should not be on the Pcard. The final receipt must show
+      pickup and drop-off locations and total miles.
+    source: {section: "Appendix B - Car Rental", page: "32, 33"}
+    severity: conditional
+    applies_to: [ground_transportation]
+    checks:
+      - id: OSU-TRV-13a
+        ask: Rental is not entirely within Oklahoma
+        pattern: list_membership
+        method: code
+        requires: [receipt]
+        scope: transaction
+      - id: OSU-TRV-13b
+        ask: Rental was not prepaid and has no deposit
+        pattern: cross_reference
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+      - id: OSU-TRV-13c
+        ask: Written justification, airfare comparison (out-of-state driving) and a final receipt with locations
+          and miles are on file
+        pattern: document_presence
+        method: code
+        requires: [receipt, records:airs]
+        scope: transaction
+        timing: {due: cycle_signoff}
+      - id: OSU-TRV-13d
+        ask: Justification is sufficient and no personal miles were driven
+        pattern: purpose
+        method: llm
+        requires: [receipt, records:airs]
+        scope: transaction
+        decision:
+          violation: Justification does not establish a business need, or the mileage includes personal driving.
+          allowed: A listed acceptable reason (remote destination, group travel, hauling equipment, cost savings,
+            etc.) and business-only miles.
+          unclear: Justification or mileage notes are missing.
+
+  - id: OSU-TRV-14
+    title: Food, drink and mileage in travel status
+    topic: travel
+    text: >-
+      Food, drink and mileage while in travel status are prohibited on the Pcard; the traveler pays and claims
+      reimbursement.
+    source: {section: "Prohibited Goods and Services; Appendix A - Food; Appendix B - Other Travel Expenses",
+      page: "19, 25, 33"}
+    severity: prohibited
+    applies_to: [meals_refreshments]
+    hints: >-
+      Restaurant charges by a cardholder who has airfare/lodging charges for overlapping dates are candidates
+      (cardholder identity in public data is a name-based proxy).
+    checks:
+      - id: OSU-TRV-14a
+        ask: Meals were not charged while the cardholder was in travel status
+        pattern: purpose
+        method: llm
+        requires: [transaction, records:airs]
+        uses: [receipt]
+        scope: trip
+        screen:
+          match: meal MCC on a date inside the cardholder's approved trip dates (AIRS)
+        decision:
+          violation: Meals, food, drinks or mileage charged while the traveler was in travel status.
+          allowed: Food for a university event that is not travel, under the food guidelines (OSU-RST-05).
+          unclear: Meal charge where it cannot be told whether the cardholder was traveling.
+
+  - id: OSU-TRV-15
+    title: Personal activities combined with business travel
+    topic: travel
+    text: >-
+      If personal activities are planned in conjunction with business travel, the Pcard may not be used for
+      any related travel expenses.
+    source: {section: "Prohibited Goods and Services", page: 19}
+    severity: prohibited
+    applies_to: [airfare_baggage, lodging, ground_transportation]
+    checks:
+      - id: OSU-TRV-15a
+        ask: The trip had no planned personal activities
+        pattern: purpose
+        method: llm
+        requires: [records:airs]
+        uses: [receipt]
+        scope: trip
+        decision:
+          violation: Travel expenses (airfare, lodging, car rental) for a trip that included planned personal
+            activities.
+          allowed: Trip that was purely for university business.
+          unclear: Trip purpose or itinerary is not known.
+
+  - id: OSU-TRV-16
+    title: No travel for paid individuals
+    topic: travel
+    text: >-
+      The Pcard may not pay travel for individuals receiving an honorarium or other compensation for their
+      service; their travel must be on their invoice.
+    source: {section: "Appendix B - introduction; Appendix A - Service Provider", page: "27, 29"}
+    severity: prohibited
+    applies_to: [airfare_baggage, lodging, ground_transportation]
+    checks:
+      - id: OSU-TRV-16a
+        ask: The traveler is not receiving an honorarium or compensation
+        pattern: list_membership
+        method: code
+        requires: [records:airs, records:accounts_payable]
+        scope: trip
+
+  - id: OSU-TRV-17
+    title: Parking
+    topic: travel
+    text: >-
+      Parking for a university business purpose is allowed with a valid receipt (a missing receipt is a
+      violation). Parking on any OSU campus is not allowed on the Pcard. Parking and traffic tickets are
+      prohibited.
+    source: {section: "Prohibited Goods and Services; Appendix B - Car Rental, Parking Expenses", page: "19, 32, 33"}
+    severity: conditional
+    applies_to: [parking_tolls]
+    hints: MCC 'AUTOMOBILE PARKING LOTS AND GARAGES' (528 OSU rows); OSU-campus parking would appear as an OSU
+      merchant.
+    checks:
+      - id: OSU-TRV-17a
+        ask: Parking is not on an OSU campus
+        pattern: list_membership
+        method: code
+        requires: [receipt, table:osu_campus_addresses]
+        scope: transaction
+      - id: OSU-TRV-17b
+        ask: No parking or traffic ticket lines
+        pattern: line_item
+        method: code
+        requires: [receipt]
+        scope: transaction
+
+  - id: OSU-TRV-18
+    title: Passports
+    topic: travel
+    text: >-
+      Passports may be purchased only for university business travel abroad, with the link to the trip
+      documented. Passport legal fees go through OK Corral.
+    source: {section: "Appendix B - Other Travel Expenses, Passports", page: 33}
+    severity: conditional
+    applies_to: [services_shipping_fees, other_unclear]
+    checks:
+      - id: OSU-TRV-18a
+        ask: A passport purchase is linked to an international business trip
+        pattern: cross_reference
+        method: code
+        requires: [transaction, records:airs]
+        scope: trip

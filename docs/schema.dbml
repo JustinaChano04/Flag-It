@@ -1,0 +1,172 @@
+// Flag-It physical schema (Postgres). Documentation only: no database is built from this yet.
+// Logical model and field meanings: docs/data.md, "Data contracts".
+// View as a diagram: paste into https://dbdiagram.io. Convert to SQL: npx -y @dbml/cli dbml2sql --postgres docs/schema.dbml
+//
+// Conventions
+// - Surrogate keys are UUIDs, generated in Python so any machine can create rows.
+// - Money is numeric(12,2), never float.
+// - Result tables are append-only and keyed on (txn_id, version): a rerun with a new model adds rows.
+// - combined_expense is not a table. It is assembled in code; the decision record (not yet designed) stores a frozen copy.
+
+Project flag_it {
+  database_type: 'PostgreSQL'
+  Note: 'Scope: intake through flags. Decision records, review outcomes, GSA rates and merchant lists come later.'
+}
+
+// ---------------------------------------------------------------- reference
+
+Table category {
+  category_id text [pk, note: 'ID from categories: in policies/osu/osu_rules.yaml, e.g. lodging']
+  name text [not null, unique, note: 'Display name, e.g. Lodging']
+  status text [not null, default: 'active', note: 'active | retired. IDs are never reused.']
+  Note: 'Loaded from the rules YAML, which wins if they disagree.'
+}
+
+Table mcc_category_lookup {
+  mcc_description text [not null]
+  lookup_version text [not null, note: 'Version of data_exploration/mcc_to_category.csv']
+  category_id text [not null, ref: > category.category_id]
+  confidence text [not null, note: 'high | medium | low | unmapped']
+  note text
+
+  indexes {
+    (mcc_description, lookup_version) [pk]
+  }
+  Note: 'Hand-built MCC description to category map. Used by the lookup categorizer.'
+}
+
+// ---------------------------------------------------------------- intake
+
+Table raw_transaction {
+  raw_id uuid [pk]
+  source_file text [not null]
+  source_line_no int [not null, note: 'Line in source_file; with source_file, identifies the row and makes loads idempotent']
+  source_rowid text [note: 'State ROWID. NOT an identifier: reused across monthly files and blank in two FY2024 files']
+  calendar_year text
+  calendar_month text
+  agencynbr text
+  agencyname text
+  last_name text
+  first_initial text
+  item_descr text
+  amount text [note: 'Text as received']
+  merchant_name text [note: 'MERCHANT in the export']
+  transaction_date text [note: 'dd-MON-yy as received']
+  post_date text [note: 'dd-MON-yy as received']
+  mcc_description text
+  loaded_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (source_file, source_line_no) [unique]
+  }
+  Note: 'Exactly as loaded; all text so nothing is coerced. Source of raw evidence (merchant, item text).'
+}
+
+Table normalized_transaction {
+  txn_id uuid [pk]
+  raw_id uuid [not null, ref: > raw_transaction.raw_id, note: 'One row per normalizer version']
+  normalizer_version text [not null]
+  agency_id text [not null]
+  cardholder_id text [not null, note: 'Proxy key agency_id|LASTNAME|I until a real card ID exists']
+  merchant_norm text [not null]
+  mcc_description text [not null]
+  mcc_code text [note: 'Null in public data']
+  amount numeric(12,2) [not null, note: 'Negative = refund or credit']
+  transaction_date date [not null]
+  post_date date [not null]
+  business_purpose text [note: 'Null in public data']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (raw_id, normalizer_version) [unique]
+    (cardholder_id, transaction_date) [note: 'As-of history: anomaly baseline, split purchases']
+    (cardholder_id, merchant_norm, transaction_date) [note: 'Split-purchase candidate groups']
+    (agency_id, transaction_date) [note: 'Department-window checks']
+  }
+}
+
+// ---------------------------------------------------------------- understand
+
+Table receipt_extraction {
+  txn_id uuid [not null, ref: > normalized_transaction.txn_id]
+  reader_model text [not null, note: 'Exact model tag and quantization']
+  match_status text [not null, note: 'matched | mismatch | unmatched']
+  file_path text [note: 'Receipt file location (storage interface)']
+  merchant text [note: 'Null when unreadable']
+  receipt_date date
+  subtotal numeric(12,2)
+  tax numeric(12,2)
+  tip numeric(12,2)
+  total numeric(12,2)
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (txn_id, reader_model) [pk]
+  }
+  Note: 'Optional per transaction. Absence means receipt-dependent checks report not evaluated.'
+}
+
+Table receipt_line_item {
+  txn_id uuid [not null]
+  reader_model text [not null]
+  line_no int [not null]
+  description text
+  quantity numeric(12,3)
+  unit_price numeric(12,2)
+  amount numeric(12,2)
+  line_type text [note: 'item | tax | tip | fee | room | other; drives line_item checks']
+
+  indexes {
+    (txn_id, reader_model, line_no) [pk]
+  }
+}
+
+Ref: receipt_line_item.(txn_id, reader_model) > receipt_extraction.(txn_id, reader_model)
+
+Table category_result {
+  txn_id uuid [not null, ref: > normalized_transaction.txn_id]
+  model_version text [not null, note: 'Lookup version or model version']
+  method text [not null, note: 'lookup | model']
+  category_id text [not null, ref: > category.category_id]
+  confidence real [not null, note: '0 to 1']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (txn_id, model_version) [pk]
+  }
+}
+
+Table anomaly_result {
+  txn_id uuid [not null, ref: > normalized_transaction.txn_id]
+  model_version text [not null, note: 'Baseline parameters or model version']
+  status text [not null, note: 'scored | insufficient_history']
+  score real [note: 'Robust z-score; null when insufficient_history']
+  history_length int [not null]
+  as_of timestamptz [not null, note: 'Only history before this time is used']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (txn_id, model_version) [pk]
+  }
+}
+
+// ---------------------------------------------------------------- decide
+
+Table flag {
+  flag_id uuid [pk]
+  txn_id uuid [not null, ref: > normalized_transaction.txn_id]
+  rule_id text [not null, note: 'Stable ID from the rules YAML, e.g. OSU-TRV-13']
+  check_id text [not null, note: 'e.g. OSU-TRV-13a']
+  result text [not null, note: 'fail | violation | unclear | pending | not evaluated | ...']
+  severity text [not null, note: 'prohibited | conditional | documentation | guidance']
+  evidence jsonb [not null, note: 'Fields and values the check used, incl. raw merchant and receipt lines']
+  score real [not null, note: '1.0 for a deterministic break; model or judge score otherwise']
+  source text [not null, note: 'code | model | llm']
+  rules_version text [not null, note: 'Version of the rules YAML that produced it']
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    txn_id
+    (rule_id, created_at)
+  }
+}
