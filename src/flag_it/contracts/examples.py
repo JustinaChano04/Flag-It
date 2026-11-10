@@ -48,3 +48,41 @@ def normalized(**over) -> NormalizedTransaction:
         "normalizer_version": "1",
     }
     return NormalizedTransaction(**(data | over))
+
+from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
+
+
+def receipt(**over) -> ReceiptExtraction:
+    data = {
+        "receipt_id": RECEIPT_ID,
+        "txn_id": TXN_ID,
+        "reader_model": "qwen3-vl:8b-q4_K_M",
+        "match_status": "matched",
+        "merchant": "Joe's Cafe",
+        "total": "412.00",
+        "line_items": [{"description": "Catering tray", "quantity": "1", "amount": "412.00"}],
+    }
+    return ReceiptExtraction(**(data | over))
+
+
+def category(**over) -> CategoryResult:
+    data = {
+        "txn_id": TXN_ID,
+        "model_version": "lookup-2025-10",
+        "category": "meals_refreshments",
+        "confidence": 0.9,
+        "method": "lookup",
+    }
+    return CategoryResult(**(data | over))
+
+
+def anomaly(**over) -> AnomalyResult:
+    data = {
+        "txn_id": TXN_ID,
+        "model_version": "robust-z-1",
+        "status": "scored",
+        "score": 1.7,
+        "history_length": 30,
+        "as_of": AS_OF,
+    }
+    return AnomalyResult(**(data | over))
