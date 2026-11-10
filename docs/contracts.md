@@ -5,9 +5,7 @@ This page is the contract between the parts of Flag-It. It says what each stage 
 - **First half: how a transaction moves.** A plain-language walkthrough of one transaction, with the reasons behind each handoff.
 - **Second half: reference.** Field tables, API endpoints, and JSON examples.
 
-**Status:** draft, written before any code.
-
-**Later source of truth:** once the code exists, the field definitions will live in Python (Pydantic models in `contracts/`). From then on this page keeps the flow, the handoffs, and the reasons, and links to the code for exact fields.
+**Status:** the field definitions now live in code, in `src/flag_it/contracts/`. The generated JSON Schemas are in `src/flag_it/contracts/schema/`. If this page and the code disagree on a field, the code wins, and this page should be fixed. This page keeps the flow, the handoffs, and the reasons.
 
 **Related pages:**
 - Database tables, types, and indexes: [schema.dbml](schema.dbml).
@@ -25,7 +23,7 @@ This page is the contract between the parts of Flag-It. It says what each stage 
 | Append-only | Rows are only added, never edited or deleted. A rerun adds new rows next to the old ones. |
 | Contract version | The version of the record shapes (the schema) in this contract. It is stamped on JSON that is saved and read back later, so the reader knows which shape to expect. See [Versioning](#versioning). |
 | Check method | How a check is evaluated, set in the rules YAML. `code` checks are deterministic Python. `llm` checks need judgment and are run by the investigation agent. |
-| Hard failure | A failed `code` check that stops the run with route `flag`: result `fail` or `violation`, on a rule whose severity is `prohibited`, `conditional`, or `documentation`. A `guidance` failure is recorded but doesn't stop the run. Results `pending` and `not evaluated` never count. |
+| Hard failure | A failed `code` check that stops the run with route `flag`: result `fail` or `violation`, on a rule whose severity is `prohibited`, `conditional`, or `documentation`. A `guidance` failure is recorded but doesn't stop the run. Results `pending` and `not_evaluated` never count. |
 | Guardrails | Plain code that checks the agent's answer before it is accepted, and sends the run to a person if the answer isn't trustworthy. |
 | Queue | A waiting line for slow jobs (Redis with the Arq library). A worker picks up a job, does it, and writes the result to Postgres. Failed jobs are retried automatically. |
 | MCC | Merchant category code: the card network's label for the kind of business a merchant is. |
@@ -139,7 +137,7 @@ Reviewers can also review other routes. These outcomes become labels for the ris
 
 ### 9. When a receipt arrives later
 
-A transaction without a receipt is decided right away. Checks that need a receipt report `not evaluated: missing receipt`. A rule that requires a receipt treats the missing receipt as a finding.
+A transaction without a receipt is decided right away. Checks that need a receipt report `not_evaluated: missing receipt`. A rule that requires a receipt treats the missing receipt as a finding.
 
 When the receipt arrives, it is read and matched, and the pipeline starts a **new snapshot and a new decision run**. The old run stays as history. The current decision for a transaction is its newest run.
 
@@ -360,7 +358,7 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 | `replaces_decision_id` | The run this one replaces. Empty exactly when `trigger` is `initial`. |
 | `screener` | `{probability, threshold, model_version}`, or empty if the screener was skipped. The threshold is copied from that model version's metadata. A probability below the threshold auto-approves. |
 | `escalation_reasons` | Present exactly when the route is `human_review`. One or more of: `unsure:<check_id>`, `low_confidence:<check_id>`, `citation_unresolved`, `invalid_output`, `agent_failed`, `review_conflict`. |
-| `rules_version` | The version of the rules YAML used for this run. |
+| `rules_version` | The rules YAML used for this run: its `policy.version`, a `+`, and the first 12 characters of the file's SHA-256 hash, for example `2026-05+3f9a1c0b7e2d`. It changes whenever the file changes. |
 | `created_at` | When the run started. The newest run per `txn_id` is the current decision. |
 
 ### Flag
@@ -370,7 +368,7 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 | `flag_id` | Key. |
 | `decision_id`, `txn_id` | The run that produced it. |
 | `rule_id`, `check_id` | Stable IDs from the rules YAML, such as `OSU-TRV-13` and `OSU-TRV-13a`. |
-| `result` | From the rules YAML vocabulary: `fail`, `violation`, `unclear`, `pending`, `not evaluated`, and others. |
+| `result` | `fail`, `violation`, `unclear`, `pending`, or `not_evaluated`. A missing input is `not_evaluated`, with the missing input named in `evidence`. |
 | `severity` | Copied from the rule. |
 | `evidence` | A list of citations (below). |
 | `score` | Confidence from 0 to 1. |
@@ -420,6 +418,8 @@ Example: a code check finds a charge over a limit. It cites the amount it read a
 ### Agent verdict
 
 The agent returns one verdict for each `llm` check it was given. The output is forced to this schema.
+
+The agent's whole answer is `{"verdicts": [...]}`, with each check appearing once.
 
 | Field | Notes |
 |---|---|
@@ -485,12 +485,24 @@ Batch response:
 
 `index` is the item's position in the request, so an item that is missing its own `external_id` can still be reported. The batch endpoint validates each item separately: a malformed item becomes an `invalid` result and never rejects the whole request.
 
+Body shapes (models in `src/flag_it/contracts/api.py`):
+
+| Endpoint | Request body | Response body |
+|---|---|---|
+| `POST /transactions` | `TransactionIn`: `source`, `external_id`, plus the raw fields as text | `IntakeResponse`: `{contract_version, item}` |
+| `POST /transactions/batch` | `BatchRequest`: `{items: [...]}`, each item shaped like `TransactionIn` but validated on its own | `BatchResponse` (example above) |
+| `POST /transactions/{txn_id}/receipt` | The receipt file (multipart upload) | `ReceiptAccepted`: `{contract_version, receipt_id, txn_id}` |
+| `GET /transactions/{txn_id}` | none | `TransactionView`: `{contract_version, txn_id, transaction, decision, flags}` |
+| `GET /transactions/{txn_id}/decisions` | none | `DecisionHistory`: `{contract_version, txn_id, decisions}` |
+
 ### Review API
 
 | Method and path | What it does |
 |---|---|
 | `GET /reviews/queue` | Decision runs waiting for a person. |
 | `POST /decisions/{decision_id}/review` | Record a review outcome. |
+
+`GET /reviews/queue` returns `ReviewQueue`: `{contract_version, items}`, where each item is a decision run. `POST /decisions/{decision_id}/review` takes `ReviewIn`: `{reviewer, final, per_flag, missed_rule_ids, reason}`. The server adds `review_id`, `decision_id`, and `created_at`, and returns the `ReviewOutcome`.
 
 ### Queue jobs
 
