@@ -8,6 +8,26 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-10: Details settled while building the contracts package
+
+- **Decided:**
+  - Flag `result` is exactly `fail`, `violation`, `unclear`, `pending`, or `not_evaluated`.
+  - `rules_version` is `policy.version` plus the first 12 characters of the rules file's SHA-256 hash, so it changes whenever the file does.
+  - Who may choose which route (`ROUTES_BY_DECIDER`) is part of the contract, not stage logic. Changing it is a contract change.
+  - A code-check flag must score 1.0.
+  - The API request and response bodies are defined in `src/flag_it/contracts/api.py` and listed in `contracts.md`.
+  - Example records live in `src/flag_it/contracts/examples.py`, inside the package, so plan 03's fixtures can build on them.
+  - The rules file path can be overridden with `FLAG_IT_RULES_PATH`, for containers that don't have the repo layout.
+  - Pydantic is pinned to one exact version so the committed JSON Schemas are identical on every machine and in CI.
+- **Why:** These turn rules from `contracts.md` into checks that fail at validation time instead of in production.
+- **Rejected:** Leaving `result` open-ended ("and others"): stages would invent values. Keeping routing rules only in stage code: a stage could pick a route nobody agreed to.
+
+## 2026-11-07: Dependencies in pyproject.toml
+
+- **Decided:** Dependencies and package metadata live only in `pyproject.toml`, installed with `pip install -e ".[dev,explore]"`. `requirements.txt` is removed. Notebook-only packages are in the `explore` extra.
+- **Why:** The `src/flag_it/` layout needs an installable package, which needs `pyproject.toml`. One file means nothing to keep in sync.
+- **Rejected:** Keeping `requirements.txt` beside it (two lists to sync). A lock tool such as uv or pip-tools, for now.
+
 ## 2026-11-10: Contract changes from the plan 01 review
 
 - **Decided:**

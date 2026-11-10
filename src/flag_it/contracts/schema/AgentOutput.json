@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "AgentResult": {
+      "enum": [
+        "pass",
+        "fail",
+        "unsure"
+      ],
+      "title": "AgentResult",
+      "type": "string"
+    },
+    "AgentVerdict": {
+      "additionalProperties": false,
+      "description": "The agent's answer for one llm check. The LLM's output is forced to AgentOutput.",
+      "properties": {
+        "check_id": {
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+[a-z]+$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "result": {
+          "$ref": "#/$defs/AgentResult"
+        }
+      },
+      "required": [
+        "check_id",
+        "result",
+        "confidence"
+      ],
+      "title": "AgentVerdict",
+      "type": "object"
+    },
+    "Citation": {
+      "description": "One piece of evidence. The guardrails check that `ref` exists.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "EvidenceKind": {
+      "enum": [
+        "field",
+        "receipt",
+        "policy",
+        "tool_result",
+        "history"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "verdicts": {
+      "items": {
+        "$ref": "#/$defs/AgentVerdict"
+      },
+      "minItems": 1,
+      "title": "Verdicts",
+      "type": "array"
+    }
+  },
+  "required": [
+    "verdicts"
+  ],
+  "title": "AgentOutput",
+  "type": "object"
+}

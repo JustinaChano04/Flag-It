@@ -1,0 +1,511 @@
+{
+  "$defs": {
+    "AnomalyResult": {
+      "properties": {
+        "as_of": {
+          "format": "date-time",
+          "title": "As Of",
+          "type": "string"
+        },
+        "history_length": {
+          "minimum": 0,
+          "title": "History Length",
+          "type": "integer"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        },
+        "status": {
+          "$ref": "#/$defs/AnomalyStatus"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "model_version",
+        "status",
+        "history_length",
+        "as_of"
+      ],
+      "title": "AnomalyResult",
+      "type": "object"
+    },
+    "AnomalyStatus": {
+      "enum": [
+        "scored",
+        "insufficient_history"
+      ],
+      "title": "AnomalyStatus",
+      "type": "string"
+    },
+    "CategoryMethod": {
+      "enum": [
+        "lookup",
+        "model"
+      ],
+      "title": "CategoryMethod",
+      "type": "string"
+    },
+    "CategoryResult": {
+      "properties": {
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "method": {
+          "$ref": "#/$defs/CategoryMethod"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "model_version",
+        "category",
+        "confidence",
+        "method"
+      ],
+      "title": "CategoryResult",
+      "type": "object"
+    },
+    "CombinedExpense": {
+      "description": "Everything known about one transaction. Parts stay nested so each keeps its version.",
+      "properties": {
+        "anomaly": {
+          "$ref": "#/$defs/AnomalyResult"
+        },
+        "category": {
+          "$ref": "#/$defs/CategoryResult"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiptExtraction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transaction": {
+          "$ref": "#/$defs/NormalizedTransaction"
+        }
+      },
+      "required": [
+        "transaction",
+        "category",
+        "anomaly"
+      ],
+      "title": "CombinedExpense",
+      "type": "object"
+    },
+    "LineType": {
+      "enum": [
+        "item",
+        "tax",
+        "tip",
+        "fee",
+        "room",
+        "other"
+      ],
+      "title": "LineType",
+      "type": "string"
+    },
+    "MatchStatus": {
+      "enum": [
+        "matched",
+        "mismatch",
+        "unmatched"
+      ],
+      "title": "MatchStatus",
+      "type": "string"
+    },
+    "NormalizedTransaction": {
+      "description": "The typed version of a raw row. Raw text stays in the raw row.",
+      "properties": {
+        "agency_id": {
+          "minLength": 1,
+          "title": "Agency Id",
+          "type": "string"
+        },
+        "amount": {
+          "decimal_places": 2,
+          "max_digits": 12,
+          "title": "Amount",
+          "type": "string"
+        },
+        "business_purpose": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Business Purpose"
+        },
+        "cardholder_id": {
+          "minLength": 1,
+          "title": "Cardholder Id",
+          "type": "string"
+        },
+        "mcc_code": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mcc Code"
+        },
+        "mcc_description": {
+          "minLength": 1,
+          "title": "Mcc Description",
+          "type": "string"
+        },
+        "merchant_norm": {
+          "minLength": 1,
+          "title": "Merchant Norm",
+          "type": "string"
+        },
+        "normalizer_version": {
+          "minLength": 1,
+          "title": "Normalizer Version",
+          "type": "string"
+        },
+        "post_date": {
+          "format": "date",
+          "title": "Post Date",
+          "type": "string"
+        },
+        "raw_id": {
+          "format": "uuid",
+          "title": "Raw Id",
+          "type": "string"
+        },
+        "transaction_date": {
+          "format": "date",
+          "title": "Transaction Date",
+          "type": "string"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "raw_id",
+        "agency_id",
+        "cardholder_id",
+        "merchant_norm",
+        "mcc_description",
+        "amount",
+        "transaction_date",
+        "post_date",
+        "normalizer_version"
+      ],
+      "title": "NormalizedTransaction",
+      "type": "object"
+    },
+    "ReceiptExtraction": {
+      "description": "What the reader got from one receipt file. Unreadable fields stay empty.",
+      "properties": {
+        "line_items": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReceiptLineItem"
+          },
+          "title": "Line Items",
+          "type": "array"
+        },
+        "match_status": {
+          "$ref": "#/$defs/MatchStatus"
+        },
+        "merchant": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merchant"
+        },
+        "reader_model": {
+          "minLength": 1,
+          "title": "Reader Model",
+          "type": "string"
+        },
+        "receipt_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Receipt Date"
+        },
+        "receipt_id": {
+          "format": "uuid",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "subtotal": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtotal"
+        },
+        "tax": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tax"
+        },
+        "tip": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tip"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "txn_id",
+        "reader_model",
+        "match_status"
+      ],
+      "title": "ReceiptExtraction",
+      "type": "object"
+    },
+    "ReceiptLineItem": {
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "line_type": {
+          "$ref": "#/$defs/LineType",
+          "default": "item"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity"
+        },
+        "unit_price": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Price"
+        }
+      },
+      "title": "ReceiptLineItem",
+      "type": "object"
+    },
+    "SourceVersions": {
+      "properties": {
+        "anomaly": {
+          "minLength": 1,
+          "title": "Anomaly",
+          "type": "string"
+        },
+        "categorizer": {
+          "minLength": 1,
+          "title": "Categorizer",
+          "type": "string"
+        },
+        "normalizer": {
+          "minLength": 1,
+          "title": "Normalizer",
+          "type": "string"
+        },
+        "reader_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reader Model"
+        }
+      },
+      "required": [
+        "normalizer",
+        "categorizer",
+        "anomaly"
+      ],
+      "title": "SourceVersions",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "payload": {
+      "$ref": "#/$defs/CombinedExpense"
+    },
+    "snapshot_id": {
+      "format": "uuid",
+      "title": "Snapshot Id",
+      "type": "string"
+    },
+    "source_versions": {
+      "$ref": "#/$defs/SourceVersions"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "txn_id",
+    "payload",
+    "source_versions",
+    "created_at"
+  ],
+  "title": "CombinedExpenseSnapshot",
+  "type": "object"
+}

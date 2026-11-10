@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "check_ids": {
+      "items": {
+        "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+[a-z]+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Check Ids",
+      "type": "array"
+    },
+    "contract_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decision_id": {
+      "format": "uuid",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "snapshot_id": {
+      "format": "uuid",
+      "title": "Snapshot Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision_id",
+    "snapshot_id",
+    "check_ids"
+  ],
+  "title": "InvestigateJob",
+  "type": "object"
+}

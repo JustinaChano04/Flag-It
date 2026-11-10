@@ -1,0 +1,132 @@
+"""Small builders for valid example records. Each takes keyword overrides.
+
+Used by this package's tests and by plan 03's fixtures. Not used by pipeline code.
+"""
+
+from datetime import date, datetime, timezone
+from uuid import UUID
+
+from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
+
+TXN_ID = UUID("00000000-0000-0000-0000-000000000001")
+RAW_ID = UUID("00000000-0000-0000-0000-000000000002")
+DECISION_ID = UUID("00000000-0000-0000-0000-000000000003")
+SNAPSHOT_ID = UUID("00000000-0000-0000-0000-000000000004")
+FLAG_ID = UUID("00000000-0000-0000-0000-000000000005")
+RECEIPT_ID = UUID("00000000-0000-0000-0000-000000000006")
+AS_OF = datetime(2025, 1, 15, 12, 0, tzinfo=timezone.utc)
+
+
+def raw_from_file(**over) -> RawTransaction:
+    data = {
+        "raw_id": RAW_ID,
+        "source_file": "FY2025_01.csv",
+        "source_line_no": 42,
+        "agencynbr": " 01000",
+        "last_name": "SMITH",
+        "first_initial": "J",
+        "amount": "412.00",
+        "merchant_name": "SQ *JOES CAFE",
+        "transaction_date": "14-JAN-25",
+        "post_date": "15-JAN-25",
+        "mcc_description": "EATING PLACES, RESTAURANTS",
+    }
+    return RawTransaction(**(data | over))
+
+
+def normalized(**over) -> NormalizedTransaction:
+    data = {
+        "txn_id": TXN_ID,
+        "raw_id": RAW_ID,
+        "agency_id": "01000",
+        "cardholder_id": "01000|SMITH|J",
+        "merchant_norm": "JOES CAFE",
+        "mcc_description": "EATING PLACES, RESTAURANTS",
+        "amount": "412.00",
+        "transaction_date": date(2025, 1, 14),
+        "post_date": date(2025, 1, 15),
+        "normalizer_version": "1",
+    }
+    return NormalizedTransaction(**(data | over))
+
+from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
+
+
+def receipt(**over) -> ReceiptExtraction:
+    data = {
+        "receipt_id": RECEIPT_ID,
+        "txn_id": TXN_ID,
+        "reader_model": "qwen3-vl:8b-q4_K_M",
+        "match_status": "matched",
+        "merchant": "Joe's Cafe",
+        "total": "412.00",
+        "line_items": [{"description": "Catering tray", "quantity": "1", "amount": "412.00"}],
+    }
+    return ReceiptExtraction(**(data | over))
+
+
+def category(**over) -> CategoryResult:
+    data = {
+        "txn_id": TXN_ID,
+        "model_version": "lookup-2025-10",
+        "category": "meals_refreshments",
+        "confidence": 0.9,
+        "method": "lookup",
+    }
+    return CategoryResult(**(data | over))
+
+
+def anomaly(**over) -> AnomalyResult:
+    data = {
+        "txn_id": TXN_ID,
+        "model_version": "robust-z-1",
+        "status": "scored",
+        "score": 1.7,
+        "history_length": 30,
+        "as_of": AS_OF,
+    }
+    return AnomalyResult(**(data | over))
+
+from flag_it.contracts.snapshot import CombinedExpense
+
+
+def combined(**over) -> CombinedExpense:
+    data = {"transaction": normalized(), "receipt": None, "category": category(), "anomaly": anomaly()}
+    return CombinedExpense(**(data | over))
+
+from flag_it.contracts.decide import Citation, DecisionRun, Flag
+
+
+def citation(**over) -> Citation:
+    data = {"kind": "field", "ref": "transaction.amount", "value": "412.00"}
+    return Citation(**(data | over))
+
+
+def flag(**over) -> Flag:
+    data = {
+        "flag_id": FLAG_ID,
+        "decision_id": DECISION_ID,
+        "txn_id": TXN_ID,
+        "rule_id": "OSU-LIM-01",
+        "check_id": "OSU-LIM-01a",
+        "result": "fail",
+        "severity": "prohibited",
+        "evidence": [citation(), citation(kind="policy", ref="params.max_single_transaction", value="10000")],
+        "score": 1.0,
+        "source": "code",
+    }
+    return Flag(**(data | over))
+
+
+def decision_run(**over) -> DecisionRun:
+    data = {
+        "decision_id": DECISION_ID,
+        "txn_id": TXN_ID,
+        "snapshot_id": SNAPSHOT_ID,
+        "route": "flag",
+        "decided_by": "rules",
+        "trigger": "initial",
+        "rules_version": "2026-05+abc123def456",
+        "created_at": AS_OF,
+    }
+    return DecisionRun(**(data | over))

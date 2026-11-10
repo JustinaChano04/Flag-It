@@ -1,0 +1,20 @@
+{
+  "additionalProperties": false,
+  "description": "Items stay raw JSON objects here. The endpoint validates each one with TransactionIn,\nso one malformed item becomes one `invalid` result instead of failing the whole batch.",
+  "properties": {
+    "items": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "minItems": 1,
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "items"
+  ],
+  "title": "BatchRequest",
+  "type": "object"
+}

@@ -1,0 +1,173 @@
+{
+  "$defs": {
+    "Citation": {
+      "description": "One piece of evidence. The guardrails check that `ref` exists.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "EvidenceKind": {
+      "enum": [
+        "field",
+        "receipt",
+        "policy",
+        "tool_result",
+        "history"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "FlagResult": {
+      "enum": [
+        "fail",
+        "violation",
+        "unclear",
+        "pending",
+        "not_evaluated"
+      ],
+      "title": "FlagResult",
+      "type": "string"
+    },
+    "FlagSource": {
+      "enum": [
+        "code",
+        "llm"
+      ],
+      "title": "FlagSource",
+      "type": "string"
+    },
+    "Severity": {
+      "enum": [
+        "prohibited",
+        "conditional",
+        "documentation",
+        "guidance"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "check_id": {
+      "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+[a-z]+$",
+      "title": "Check Id",
+      "type": "string"
+    },
+    "decision_id": {
+      "format": "uuid",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "due_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Due At"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/Citation"
+      },
+      "minItems": 1,
+      "title": "Evidence",
+      "type": "array"
+    },
+    "flag_id": {
+      "format": "uuid",
+      "title": "Flag Id",
+      "type": "string"
+    },
+    "result": {
+      "$ref": "#/$defs/FlagResult"
+    },
+    "rule_id": {
+      "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+      "title": "Rule Id",
+      "type": "string"
+    },
+    "score": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Score",
+      "type": "number"
+    },
+    "severity": {
+      "$ref": "#/$defs/Severity"
+    },
+    "source": {
+      "$ref": "#/$defs/FlagSource"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "flag_id",
+    "decision_id",
+    "txn_id",
+    "rule_id",
+    "check_id",
+    "result",
+    "severity",
+    "evidence",
+    "score",
+    "source"
+  ],
+  "title": "Flag",
+  "type": "object"
+}

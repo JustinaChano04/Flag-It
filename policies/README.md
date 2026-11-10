@@ -105,7 +105,7 @@ What this means for the pipeline:
 python policies/scripts/render_breakdown.py policies/osu/osu_rules.yaml
 ```
 
-This rewrites `rule_breakdown.png`, refreshes the generated judge section in `osu_policy.md`, and prints the tables above. Paste the tables here if the counts change. It needs `pyyaml` and `matplotlib` (see `requirements.txt`).
+This rewrites `rule_breakdown.png`, refreshes the generated judge section in `osu_policy.md`, and prints the tables above. Paste the tables here if the counts change. It needs `pyyaml` and `matplotlib` (see `pyproject.toml`; install with `pip install -e ".[explore]"`).
 
 ## Status and review
 

@@ -1,0 +1,100 @@
+{
+  "$defs": {
+    "FieldError": {
+      "properties": {
+        "field": {
+          "minLength": 1,
+          "title": "Field",
+          "type": "string"
+        },
+        "message": {
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "field",
+        "message"
+      ],
+      "title": "FieldError",
+      "type": "object"
+    },
+    "IntakeItemResult": {
+      "properties": {
+        "errors": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FieldError"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "index": {
+          "minimum": 0,
+          "title": "Index",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/IntakeStatus"
+        },
+        "txn_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Txn Id"
+        }
+      },
+      "required": [
+        "index",
+        "status"
+      ],
+      "title": "IntakeItemResult",
+      "type": "object"
+    },
+    "IntakeStatus": {
+      "enum": [
+        "accepted",
+        "duplicate",
+        "invalid"
+      ],
+      "title": "IntakeStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "item": {
+      "$ref": "#/$defs/IntakeItemResult"
+    }
+  },
+  "required": [
+    "item"
+  ],
+  "title": "IntakeResponse",
+  "type": "object"
+}
