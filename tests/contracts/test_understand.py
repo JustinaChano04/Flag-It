@@ -1,3 +1,5 @@
+"""Receipt, category, and anomaly results."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -25,6 +27,7 @@ def test_anomaly_score_required_when_scored():
         anomaly(score=None)
 
 
+# With too little history the score must be empty, even 0.0 is rejected.
 def test_anomaly_score_empty_when_history_is_insufficient():
     assert anomaly(status="insufficient_history", score=None, history_length=2).score is None
     with pytest.raises(ValidationError, match="score"):

@@ -1,3 +1,5 @@
+"""Flags, agent verdicts, the screener result, and decision-run routing rules."""
+
 from uuid import uuid4
 
 import pytest
@@ -29,17 +31,20 @@ def test_flag_needs_evidence():
         flag(evidence=[])
 
 
+# A code check is pass or fail, so its flag scores 1.0. Only the agent gives partial scores.
 def test_code_flags_score_one():
     with pytest.raises(ValidationError, match="must score 1.0"):
         flag(score=0.8)
     assert flag(source="llm", score=0.8).score == 0.8
 
 
+# Only code checks and the agent create flags, so FlagSource has no screener value.
 def test_the_screener_cannot_create_flags():
     with pytest.raises(ValidationError):
         flag(source="model")
 
 
+# due_at is when the deadline passes.
 def test_pending_flags_carry_due_at_and_only_they_do():
     assert flag(result="pending", due_at=AS_OF).due_at == AS_OF
     with pytest.raises(ValidationError, match="due_at"):
@@ -55,6 +60,7 @@ def test_flag_evidence_is_a_tuple():
 # Agent verdicts
 
 
+# A fail verdict must point at the policy text it relies on.
 def test_agent_fail_must_cite_the_policy():
     with pytest.raises(ValidationError, match="policy citation"):
         _verdict(result="fail", evidence=[citation()])
@@ -116,6 +122,7 @@ def _valid_extras(decider: DecidedBy, route: Route) -> dict:
 
 @pytest.mark.parametrize("decider", list(DecidedBy))
 @pytest.mark.parametrize("route", list(Route))
+# Every decider and route pair: allowed only if listed in ROUTES_BY_DECIDER.
 def test_decider_can_only_choose_its_own_routes(decider, route):
     run = lambda: decision_run(route=route, decided_by=decider, **_valid_extras(decider, route))
     if route in ROUTES_BY_DECIDER[decider]:
@@ -125,6 +132,7 @@ def test_decider_can_only_choose_its_own_routes(decider, route):
             run()
 
 
+# Auto-approve needs a screener result with probability below its threshold.
 def test_screener_decision_needs_a_low_screener_result():
     with pytest.raises(ValidationError, match="screener result"):
         decision_run(route="auto_approve", decided_by="screener")
@@ -155,6 +163,7 @@ def test_initial_runs_replace_nothing_and_reruns_replace_something():
     assert decision_run(trigger="deadline", replaces_decision_id=uuid4()).trigger == "deadline"
 
 
+# decided_by=rerun goes with the review_conflict reason, and a rerun can't come from an initial run.
 def test_a_review_conflict_is_a_rerun_decision():
     with pytest.raises(ValidationError, match="review_conflict"):
         decision_run(

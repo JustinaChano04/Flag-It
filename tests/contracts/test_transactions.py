@@ -1,3 +1,5 @@
+"""Raw and normalized transaction models."""
+
 from decimal import Decimal
 
 import pytest
@@ -15,6 +17,7 @@ def test_raw_from_api_is_valid():
     assert raw.external_id == "A-1001"
 
 
+# A row comes from a file (source_file + source_line_no) or the API (source + external_id), not both or neither.
 def test_raw_needs_exactly_one_origin():
     with pytest.raises(ValidationError, match="exactly one origin"):
         raw_from_file(source_file=None, source_line_no=None)
@@ -38,6 +41,7 @@ def test_raw_from_api_may_carry_mcc_code_and_purpose():
     assert raw.business_purpose == "Team lunch"
 
 
+# Money must be a string or Decimal, because floats lose precision.
 def test_normalized_rejects_a_float_amount():
     with pytest.raises(ValidationError, match="must not be a float"):
         normalized(amount=412.0)

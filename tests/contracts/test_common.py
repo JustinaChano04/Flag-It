@@ -1,3 +1,5 @@
+"""Shared base models, field types, enums, and version helpers."""
+
 from decimal import Decimal
 
 import pytest
@@ -57,6 +59,7 @@ def test_unit_interval_bounds():
         _sample(score=-0.01)
 
 
+# A check ID is its rule ID plus lowercase letters, so OSU-LIM-012 is not a check of OSU-LIM-01.
 def test_check_belongs_to_rule():
     assert check_belongs_to_rule("OSU-LIM-01", "OSU-LIM-01a")
     assert not check_belongs_to_rule("OSU-LIM-01", "OSU-LIM-012")
@@ -87,6 +90,7 @@ def test_record_models_ignore_unknown_fields_and_are_frozen():
         record.amount = "2.00"
 
 
+# unsure and low_confidence must name a check ID; the other reasons stand alone.
 def test_escalation_reasons_are_a_fixed_list():
     ok = ("unsure:OSU-TRV-13b", "low_confidence:OSU-TRV-13b", "citation_unresolved",
           "invalid_output", "agent_failed", "review_conflict")
@@ -96,6 +100,7 @@ def test_escalation_reasons_are_a_fixed_list():
             _Record(amount="1.00", reasons=(bad,))
 
 
+# Same major version is compatible. A different major or a malformed string is not.
 def test_version_helpers():
     assert major("2.4.1") == 2
     ensure_compatible(CONTRACT_VERSION)
@@ -106,12 +111,14 @@ def test_version_helpers():
         ensure_compatible("not-a-version")
 
 
+# Saved data without contract_version is rejected, never assumed current.
 def test_require_version_needs_a_stamp():
     require_version({"contract_version": CONTRACT_VERSION})
     with pytest.raises(IncompatibleContractVersion):
         require_version({})
 
 
+# Enum values are the exact strings in docs/contracts.md.
 def test_enum_values_match_contract():
     assert [r.value for r in Route] == [
         "flag", "auto_approve", "agent_approve", "agent_flag", "human_review",

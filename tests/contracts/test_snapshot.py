@@ -1,3 +1,5 @@
+"""The frozen snapshot that feeds a decision run."""
+
 from uuid import uuid4
 
 import pytest
@@ -40,6 +42,7 @@ def test_snapshot_txn_id_must_match_payload():
 
 
 @pytest.mark.parametrize("field, value", [("categorizer", "other"), ("reader_model", "other-reader")])
+# The recorded versions can't drift from the versions inside the payload.
 def test_source_versions_must_match_payload(field, value):
     snap = CombinedExpenseSnapshot.build(combined(receipt=receipt()))
     wrong = snap.source_versions.model_copy(update={field: value})
@@ -52,6 +55,7 @@ def test_snapshot_survives_a_json_round_trip_through_load_snapshot():
     assert load_snapshot(snap.model_dump(mode="json")) == snap
 
 
+# A newer minor version with an extra field still loads, because records ignore unknown fields.
 def test_load_snapshot_accepts_a_newer_minor_version_with_extra_fields():
     data = CombinedExpenseSnapshot.build(combined()).model_dump(mode="json")
     data["contract_version"] = "1.9.0"

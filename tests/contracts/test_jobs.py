@@ -1,3 +1,5 @@
+"""Queue job payloads and version-checked loading."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -11,6 +13,7 @@ def test_jobs_are_stamped_and_round_trip():
     assert load_job(InvestigateJob, job.model_dump(mode="json")) == job
 
 
+# A job from a newer minor version, with an extra field, still loads.
 def test_a_worker_reads_a_newer_minor_version_with_a_new_field():
     data = ReadReceiptJob(receipt_id=RECEIPT_ID, txn_id=TXN_ID).model_dump(mode="json")
     data |= {"contract_version": "1.1.0", "priority": "high"}

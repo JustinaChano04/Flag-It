@@ -1,3 +1,5 @@
+"""Loading and validating osu_rules.yaml."""
+
 from pathlib import Path
 
 import pytest
@@ -69,6 +71,7 @@ def test_rules_version_is_policy_version_plus_file_hash(rules, tmp_path):
     assert load_rules(_write(tmp_path, data)).rules_version != first
 
 
+# param() raises on a misspelled parameter name instead of returning nothing.
 def test_lookups(rules):
     rule, check = rules.check("OSU-LIM-01a")
     assert rule.id == "OSU-LIM-01"
@@ -109,6 +112,7 @@ def test_unknown_keys_are_rejected_on_rules_and_policy(tmp_path, where):
         load_rules(_write(tmp_path, data))
 
 
+# Same as above, for a key on a check.
 def test_unknown_key_is_rejected(tmp_path):
     data = _minimal()
     data["rules"][0]["checks"][0]["threshold"] = 10

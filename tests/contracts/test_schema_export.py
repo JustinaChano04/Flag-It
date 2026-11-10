@@ -1,3 +1,5 @@
+"""JSON Schema export and the CONTRACT_VERSION guard."""
+
 import json
 
 import pytest
@@ -16,6 +18,7 @@ def _rewrite_manifest(path, **changes):
     (path / "manifest.json").write_text(json.dumps(manifest))
 
 
+# Fails when a model changed but the schema files weren't regenerated.
 def test_committed_schemas_are_current():
     assert schema_export.check() == []
 
@@ -75,6 +78,7 @@ def test_check_reports_a_manifest_version_mismatch(tmp_path):
     assert any("manifest.json has version" in p for p in schema_export.check(tmp_path))
 
 
+# Mirrors CI: changed schemas need a version higher than main's.
 def test_check_against_main_needs_a_higher_version_when_schemas_changed(tmp_path):
     schema_export.write(tmp_path, init=True)
     current = _manifest(tmp_path)

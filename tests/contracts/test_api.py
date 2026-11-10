@@ -1,3 +1,5 @@
+"""Intake and review API request and response bodies."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -44,6 +46,7 @@ def test_one_malformed_item_does_not_fail_the_batch():
     assert results == ["accepted", "invalid"]
 
 
+# Accepted and duplicate results need a txn_id and no errors.
 def test_accepted_and_duplicate_items_carry_a_txn_id():
     assert IntakeItemResult(index=0, external_id="A-1", status="duplicate", txn_id=TXN_ID).txn_id == TXN_ID
     with pytest.raises(ValidationError, match="has a txn_id and no errors"):
@@ -78,6 +81,7 @@ def test_an_item_missing_its_external_id_can_still_be_reported():
         IntakeItemResult(index=0, status="accepted", txn_id=TXN_ID)
 
 
+# Every response carries contract_version.
 def test_responses_are_stamped():
     item = IntakeItemResult(index=0, external_id="A-1", status="accepted", txn_id=TXN_ID)
     assert BatchResponse(items=[item]).contract_version == CONTRACT_VERSION
