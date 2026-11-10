@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the schema check reads main's manifest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: python -m pytest
+      - name: Schema check against main
+        run: |
+          git show origin/main:src/flag_it/contracts/schema/manifest.json > "$RUNNER_TEMP/base.json" 2>/dev/null \
+            || rm -f "$RUNNER_TEMP/base.json"  # first PR: main has no manifest yet
+          python -m flag_it.contracts.schema_export --check --base "$RUNNER_TEMP/base.json"

@@ -1,0 +1,47 @@
+{
+  "$defs": {
+    "CategoryMethod": {
+      "enum": [
+        "lookup",
+        "model"
+      ],
+      "title": "CategoryMethod",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "category": {
+      "minLength": 1,
+      "title": "Category",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "method": {
+      "$ref": "#/$defs/CategoryMethod"
+    },
+    "model_version": {
+      "minLength": 1,
+      "title": "Model Version",
+      "type": "string"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "txn_id",
+    "model_version",
+    "category",
+    "confidence",
+    "method"
+  ],
+  "title": "CategoryResult",
+  "type": "object"
+}

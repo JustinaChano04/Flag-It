@@ -1,0 +1,188 @@
+{
+  "$defs": {
+    "DecidedBy": {
+      "enum": [
+        "rules",
+        "screener",
+        "agent",
+        "guardrails",
+        "rerun"
+      ],
+      "title": "DecidedBy",
+      "type": "string"
+    },
+    "DecisionRun": {
+      "description": "One pass of the Decide stages over one snapshot. Route is empty while the agent works.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecidedBy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decision_id": {
+          "format": "uuid",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "escalation_reasons": {
+          "default": [],
+          "items": {
+            "pattern": "^((unsure|low_confidence):[A-Z0-9]+(-[A-Z0-9]+)+[a-z]+|citation_unresolved|invalid_output|agent_failed|review_conflict)$",
+            "type": "string"
+          },
+          "title": "Escalation Reasons",
+          "type": "array"
+        },
+        "replaces_decision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replaces Decision Id"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Route"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rules_version": {
+          "minLength": 1,
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "screener": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScreenerResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/RunTrigger"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision_id",
+        "txn_id",
+        "snapshot_id",
+        "trigger",
+        "rules_version",
+        "created_at"
+      ],
+      "title": "DecisionRun",
+      "type": "object"
+    },
+    "Route": {
+      "enum": [
+        "flag",
+        "auto_approve",
+        "agent_approve",
+        "agent_flag",
+        "human_review"
+      ],
+      "title": "Route",
+      "type": "string"
+    },
+    "RunTrigger": {
+      "enum": [
+        "initial",
+        "late_receipt",
+        "deadline"
+      ],
+      "title": "RunTrigger",
+      "type": "string"
+    },
+    "ScreenerResult": {
+      "properties": {
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "probability": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Probability",
+          "type": "number"
+        },
+        "threshold": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "probability",
+        "threshold",
+        "model_version"
+      ],
+      "title": "ScreenerResult",
+      "type": "object"
+    }
+  },
+  "description": "GET /transactions/{txn_id}/decisions, newest first.",
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "decisions": {
+      "items": {
+        "$ref": "#/$defs/DecisionRun"
+      },
+      "title": "Decisions",
+      "type": "array"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "txn_id",
+    "decisions"
+  ],
+  "title": "DecisionHistory",
+  "type": "object"
+}

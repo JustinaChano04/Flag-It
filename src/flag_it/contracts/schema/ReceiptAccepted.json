@@ -1,0 +1,26 @@
+{
+  "properties": {
+    "contract_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "receipt_id": {
+      "format": "uuid",
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "txn_id"
+  ],
+  "title": "ReceiptAccepted",
+  "type": "object"
+}

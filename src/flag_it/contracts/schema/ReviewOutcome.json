@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "FlagReview": {
+      "properties": {
+        "agree": {
+          "title": "Agree",
+          "type": "boolean"
+        },
+        "flag_id": {
+          "format": "uuid",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "flag_id",
+        "agree"
+      ],
+      "title": "FlagReview",
+      "type": "object"
+    },
+    "ReviewFinal": {
+      "enum": [
+        "approve",
+        "flag"
+      ],
+      "title": "ReviewFinal",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision_id": {
+      "format": "uuid",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "final": {
+      "$ref": "#/$defs/ReviewFinal"
+    },
+    "missed_rule_ids": {
+      "default": [],
+      "items": {
+        "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+        "type": "string"
+      },
+      "title": "Missed Rule Ids",
+      "type": "array"
+    },
+    "per_flag": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/FlagReview"
+      },
+      "title": "Per Flag",
+      "type": "array"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "review_id": {
+      "format": "uuid",
+      "title": "Review Id",
+      "type": "string"
+    },
+    "reviewer": {
+      "minLength": 1,
+      "title": "Reviewer",
+      "type": "string"
+    }
+  },
+  "required": [
+    "review_id",
+    "decision_id",
+    "reviewer",
+    "final",
+    "created_at"
+  ],
+  "title": "ReviewOutcome",
+  "type": "object"
+}

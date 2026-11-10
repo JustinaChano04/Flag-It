@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "FlagReview": {
+      "properties": {
+        "agree": {
+          "title": "Agree",
+          "type": "boolean"
+        },
+        "flag_id": {
+          "format": "uuid",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "flag_id",
+        "agree"
+      ],
+      "title": "FlagReview",
+      "type": "object"
+    },
+    "ReviewFinal": {
+      "enum": [
+        "approve",
+        "flag"
+      ],
+      "title": "ReviewFinal",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Body of POST /decisions/{decision_id}/review. The server adds the IDs and timestamp.",
+  "properties": {
+    "final": {
+      "$ref": "#/$defs/ReviewFinal"
+    },
+    "missed_rule_ids": {
+      "default": [],
+      "items": {
+        "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+        "type": "string"
+      },
+      "title": "Missed Rule Ids",
+      "type": "array"
+    },
+    "per_flag": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/FlagReview"
+      },
+      "title": "Per Flag",
+      "type": "array"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "reviewer": {
+      "minLength": 1,
+      "title": "Reviewer",
+      "type": "string"
+    }
+  },
+  "required": [
+    "reviewer",
+    "final"
+  ],
+  "title": "ReviewIn",
+  "type": "object"
+}

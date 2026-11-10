@@ -1,0 +1,95 @@
+{
+  "description": "The typed version of a raw row. Raw text stays in the raw row.",
+  "properties": {
+    "agency_id": {
+      "minLength": 1,
+      "title": "Agency Id",
+      "type": "string"
+    },
+    "amount": {
+      "decimal_places": 2,
+      "max_digits": 12,
+      "title": "Amount",
+      "type": "string"
+    },
+    "business_purpose": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Business Purpose"
+    },
+    "cardholder_id": {
+      "minLength": 1,
+      "title": "Cardholder Id",
+      "type": "string"
+    },
+    "mcc_code": {
+      "anyOf": [
+        {
+          "pattern": "^\\d{4}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Mcc Code"
+    },
+    "mcc_description": {
+      "minLength": 1,
+      "title": "Mcc Description",
+      "type": "string"
+    },
+    "merchant_norm": {
+      "minLength": 1,
+      "title": "Merchant Norm",
+      "type": "string"
+    },
+    "normalizer_version": {
+      "minLength": 1,
+      "title": "Normalizer Version",
+      "type": "string"
+    },
+    "post_date": {
+      "format": "date",
+      "title": "Post Date",
+      "type": "string"
+    },
+    "raw_id": {
+      "format": "uuid",
+      "title": "Raw Id",
+      "type": "string"
+    },
+    "transaction_date": {
+      "format": "date",
+      "title": "Transaction Date",
+      "type": "string"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "txn_id",
+    "raw_id",
+    "agency_id",
+    "cardholder_id",
+    "merchant_norm",
+    "mcc_description",
+    "amount",
+    "transaction_date",
+    "post_date",
+    "normalizer_version"
+  ],
+  "title": "NormalizedTransaction",
+  "type": "object"
+}

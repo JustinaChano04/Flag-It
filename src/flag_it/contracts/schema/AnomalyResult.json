@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "AnomalyStatus": {
+      "enum": [
+        "scored",
+        "insufficient_history"
+      ],
+      "title": "AnomalyStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "history_length": {
+      "minimum": 0,
+      "title": "History Length",
+      "type": "integer"
+    },
+    "model_version": {
+      "minLength": 1,
+      "title": "Model Version",
+      "type": "string"
+    },
+    "score": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Score"
+    },
+    "status": {
+      "$ref": "#/$defs/AnomalyStatus"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "txn_id",
+    "model_version",
+    "status",
+    "history_length",
+    "as_of"
+  ],
+  "title": "AnomalyResult",
+  "type": "object"
+}
