@@ -93,3 +93,40 @@ from flag_it.contracts.snapshot import CombinedExpense
 def combined(**over) -> CombinedExpense:
     data = {"transaction": normalized(), "receipt": None, "category": category(), "anomaly": anomaly()}
     return CombinedExpense(**(data | over))
+
+from flag_it.contracts.decide import Citation, DecisionRun, Flag
+
+
+def citation(**over) -> Citation:
+    data = {"kind": "field", "ref": "transaction.amount", "value": "412.00"}
+    return Citation(**(data | over))
+
+
+def flag(**over) -> Flag:
+    data = {
+        "flag_id": FLAG_ID,
+        "decision_id": DECISION_ID,
+        "txn_id": TXN_ID,
+        "rule_id": "OSU-LIM-01",
+        "check_id": "OSU-LIM-01a",
+        "result": "fail",
+        "severity": "prohibited",
+        "evidence": [citation(), citation(kind="policy", ref="params.max_single_transaction", value="10000")],
+        "score": 1.0,
+        "source": "code",
+    }
+    return Flag(**(data | over))
+
+
+def decision_run(**over) -> DecisionRun:
+    data = {
+        "decision_id": DECISION_ID,
+        "txn_id": TXN_ID,
+        "snapshot_id": SNAPSHOT_ID,
+        "route": "flag",
+        "decided_by": "rules",
+        "trigger": "initial",
+        "rules_version": "2026-05+abc123def456",
+        "created_at": AS_OF,
+    }
+    return DecisionRun(**(data | over))
