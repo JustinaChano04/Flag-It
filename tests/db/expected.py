@@ -5,4 +5,8 @@ ALL_TABLES = {
     "raw_transaction",
     "txn",
     "normalized_transaction",
+    "receipt_file",
+    "receipt_extraction",
+    "category_result",
+    "anomaly_result",
 }

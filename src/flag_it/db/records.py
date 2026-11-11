@@ -15,7 +15,9 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
+from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
 from flag_it.db.connection import Conn
+from flag_it.db.rows import ReceiptFile
 
 
 class NotFound(LookupError):
@@ -92,3 +94,46 @@ def load_normalized_transaction(
             normalizer_version,
         )
     return NormalizedTransaction.model_validate(row)
+
+
+# ---------------------------------------------------------------- understand
+
+
+def save_receipt_file(conn: Conn, file: ReceiptFile) -> None:
+    _insert(conn, "receipt_file", _row(file))
+
+
+def load_receipt_file(conn: Conn, receipt_id: UUID) -> ReceiptFile:
+    return ReceiptFile.model_validate(_one(conn, "SELECT * FROM receipt_file WHERE receipt_id = %s", receipt_id))
+
+
+def save_receipt_extraction(conn: Conn, receipt: ReceiptExtraction) -> None:
+    _insert(conn, "receipt_extraction", _row(receipt, json=["line_items"]))
+
+
+def load_receipt_extraction(conn: Conn, receipt_id: UUID, reader_model: str) -> ReceiptExtraction:
+    row = _one(
+        conn,
+        "SELECT * FROM receipt_extraction WHERE receipt_id = %s AND reader_model = %s",
+        receipt_id,
+        reader_model,
+    )
+    return ReceiptExtraction.model_validate(row)
+
+
+def save_category_result(conn: Conn, result: CategoryResult) -> None:
+    _insert(conn, "category_result", _row(result))
+
+
+def load_category_result(conn: Conn, txn_id: UUID, model_version: str) -> CategoryResult:
+    row = _one(conn, "SELECT * FROM category_result WHERE txn_id = %s AND model_version = %s", txn_id, model_version)
+    return CategoryResult.model_validate(row)
+
+
+def save_anomaly_result(conn: Conn, result: AnomalyResult) -> None:
+    _insert(conn, "anomaly_result", _row(result))
+
+
+def load_anomaly_result(conn: Conn, txn_id: UUID, model_version: str) -> AnomalyResult:
+    row = _one(conn, "SELECT * FROM anomaly_result WHERE txn_id = %s AND model_version = %s", txn_id, model_version)
+    return AnomalyResult.model_validate(row)
