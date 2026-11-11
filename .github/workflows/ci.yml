@@ -11,6 +11,22 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: flag_it
+          POSTGRES_PASSWORD: flag_it
+          POSTGRES_DB: flag_it_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U flag_it -d flag_it_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      FLAG_IT_TEST_DATABASE_URL: postgresql://flag_it:flag_it@localhost:5432/flag_it_test
     steps:
       - uses: actions/checkout@v4
         with:
