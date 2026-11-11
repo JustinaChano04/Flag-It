@@ -5,12 +5,14 @@ and read through the database only.
 """
 
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Self
 from uuid import UUID
 
 from pydantic import Field
 
-from flag_it.contracts.common import NonEmptyStr, RecordModel
+from flag_it.contracts.common import CheckId, NonEmptyStr, RecordModel, UnitInterval
+from flag_it.contracts.decide import AgentVerdict, Citation
+from flag_it.contracts.enums import AgentResult
 
 
 class ReceiptFile(RecordModel):
@@ -23,3 +25,18 @@ class ReceiptFile(RecordModel):
     sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
     size_bytes: Annotated[int, Field(gt=0)]
     uploaded_at: datetime
+
+
+class StoredAgentVerdict(RecordModel):
+    """One AgentVerdict as saved for a run. AgentVerdict rejects unknown fields because it comes
+    from the LLM; the stored row is a record, so it ignores them like every other record."""
+
+    decision_id: UUID
+    check_id: CheckId
+    result: AgentResult
+    confidence: UnitInterval
+    evidence: tuple[Citation, ...] = ()
+
+    @classmethod
+    def from_verdict(cls, decision_id: UUID, verdict: AgentVerdict) -> Self:
+        return cls(decision_id=decision_id, **verdict.model_dump())

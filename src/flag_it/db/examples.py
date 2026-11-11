@@ -4,11 +4,14 @@ Each save_example_* helper saves everything the previous one does, plus one more
 use the records in flag_it.contracts.examples. For tests and plan 03's fixtures; not pipeline code.
 """
 
+from uuid import UUID
+
 from flag_it.contracts import examples as ex
+from flag_it.contracts.review import ReviewOutcome
 from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.db import records
 from flag_it.db.connection import Conn
-from flag_it.db.rows import ReceiptFile
+from flag_it.db.rows import ReceiptFile, StoredAgentVerdict
 
 
 def save_example_transaction(conn: Conn) -> None:
@@ -48,3 +51,39 @@ def save_example_decision(conn: Conn) -> None:
     save_example_results(conn)
     records.save_snapshot(conn, snapshot())
     records.save_decision_run(conn, ex.decision_run())
+
+
+REVIEW_ID = UUID("00000000-0000-0000-0000-000000000007")
+
+
+def agent_verdict(**over) -> StoredAgentVerdict:
+    data = {
+        "decision_id": ex.DECISION_ID,
+        "check_id": "OSU-GEN-06a",
+        "result": "unsure",
+        "confidence": 0.4,
+        "evidence": [ex.citation(ref="transaction.merchant_norm", value="JOES CAFE")],
+    }
+    return StoredAgentVerdict(**(data | over))
+
+
+def review_outcome(**over) -> ReviewOutcome:
+    data = {
+        "review_id": REVIEW_ID,
+        "decision_id": ex.DECISION_ID,
+        "reviewer": "reviewer@example.edu",
+        "final": "flag",
+        "per_flag": [{"flag_id": ex.FLAG_ID, "agree": True}],
+        "missed_rule_ids": ["OSU-GEN-04"],
+        "reason": "Over the single-transaction limit.",
+        "created_at": ex.AS_OF,
+    }
+    return ReviewOutcome(**(data | over))
+
+
+def save_example_review(conn: Conn) -> None:
+    """One valid row in every table."""
+    save_example_decision(conn)
+    records.save_flag(conn, ex.flag())
+    records.save_agent_verdict(conn, agent_verdict())
+    records.save_review_outcome(conn, review_outcome())

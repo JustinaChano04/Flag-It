@@ -11,4 +11,7 @@ ALL_TABLES = {
     "anomaly_result",
     "combined_expense_snapshot",
     "decision_run",
+    "flag",
+    "agent_verdict",
+    "review_outcome",
 }

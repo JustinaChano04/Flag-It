@@ -14,14 +14,15 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
-from flag_it.contracts.decide import DecisionRun
+from flag_it.contracts.decide import DecisionRun, Flag
 from flag_it.contracts.enums import DecidedBy, Route
+from flag_it.contracts.review import ReviewOutcome
 from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.contracts.snapshot import load_snapshot as _validate_snapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
 from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
 from flag_it.db.connection import Conn
-from flag_it.db.rows import ReceiptFile
+from flag_it.db.rows import ReceiptFile, StoredAgentVerdict
 
 
 class NotFound(LookupError):
@@ -237,3 +238,37 @@ def load_decision_history(conn: Conn, txn_id: UUID) -> tuple[DecisionRun, ...]:
         (txn_id,),
     ).fetchall()
     return tuple(_decision_run(row) for row in rows)
+
+
+# ---------------------------------------------------------------- findings and reviews
+
+
+def save_flag(conn: Conn, flag: Flag) -> None:
+    _insert(conn, "flag", _row(flag, json=["evidence"]))
+
+
+def load_flags(conn: Conn, decision_id: UUID) -> tuple[Flag, ...]:
+    rows = conn.execute("SELECT * FROM flag WHERE decision_id = %s ORDER BY check_id", (decision_id,)).fetchall()
+    return tuple(Flag.model_validate(row) for row in rows)
+
+
+def save_agent_verdict(conn: Conn, verdict: StoredAgentVerdict) -> None:
+    _insert(conn, "agent_verdict", _row(verdict, json=["evidence"]))
+
+
+def load_agent_verdicts(conn: Conn, decision_id: UUID) -> tuple[StoredAgentVerdict, ...]:
+    rows = conn.execute(
+        "SELECT * FROM agent_verdict WHERE decision_id = %s ORDER BY check_id", (decision_id,)
+    ).fetchall()
+    return tuple(StoredAgentVerdict.model_validate(row) for row in rows)
+
+
+def save_review_outcome(conn: Conn, review: ReviewOutcome) -> None:
+    _insert(conn, "review_outcome", _row(review, json=["per_flag"]))
+
+
+def load_review_outcomes(conn: Conn, decision_id: UUID) -> tuple[ReviewOutcome, ...]:
+    rows = conn.execute(
+        "SELECT * FROM review_outcome WHERE decision_id = %s ORDER BY created_at", (decision_id,)
+    ).fetchall()
+    return tuple(ReviewOutcome.model_validate(row) for row in rows)
