@@ -9,4 +9,6 @@ ALL_TABLES = {
     "receipt_extraction",
     "category_result",
     "anomaly_result",
+    "combined_expense_snapshot",
+    "decision_run",
 }

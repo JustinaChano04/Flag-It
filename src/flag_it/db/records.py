@@ -14,6 +14,10 @@ from psycopg import sql
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel
 
+from flag_it.contracts.decide import DecisionRun
+from flag_it.contracts.enums import DecidedBy, Route
+from flag_it.contracts.snapshot import CombinedExpenseSnapshot
+from flag_it.contracts.snapshot import load_snapshot as _validate_snapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
 from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
 from flag_it.db.connection import Conn
@@ -137,3 +141,99 @@ def save_anomaly_result(conn: Conn, result: AnomalyResult) -> None:
 def load_anomaly_result(conn: Conn, txn_id: UUID, model_version: str) -> AnomalyResult:
     row = _one(conn, "SELECT * FROM anomaly_result WHERE txn_id = %s AND model_version = %s", txn_id, model_version)
     return AnomalyResult.model_validate(row)
+
+
+# ---------------------------------------------------------------- decide
+
+
+def save_snapshot(conn: Conn, snapshot: CombinedExpenseSnapshot) -> None:
+    _insert(conn, "combined_expense_snapshot", _row(snapshot, json=["payload", "source_versions"]))
+
+
+def load_snapshot(conn: Conn, snapshot_id: UUID) -> CombinedExpenseSnapshot:
+    """Refuses a snapshot written under another major contract version."""
+    return _validate_snapshot(_one(conn, "SELECT * FROM combined_expense_snapshot WHERE snapshot_id = %s", snapshot_id))
+
+
+_SCREENER_COLUMNS = {
+    "screener_probability": "probability",
+    "screener_threshold": "threshold",
+    "screener_model_version": "model_version",
+}
+
+
+def save_decision_run(conn: Conn, run: DecisionRun) -> None:
+    row = _row(run, exclude=["screener"])
+    for column, field in _SCREENER_COLUMNS.items():
+        row[column] = getattr(run.screener, field) if run.screener else None
+    _insert(conn, "decision_run", row)
+
+
+def _decision_run(row: dict[str, Any]) -> DecisionRun:
+    screener = {field: row.pop(column) for column, field in _SCREENER_COLUMNS.items()}
+    return DecisionRun.model_validate({**row, "screener": screener if screener["model_version"] else None})
+
+
+def load_decision_run(conn: Conn, decision_id: UUID) -> DecisionRun:
+    return _decision_run(_one(conn, "SELECT * FROM decision_run WHERE decision_id = %s", decision_id))
+
+
+def fill_route(
+    conn: Conn,
+    decision_id: UUID,
+    *,
+    route: Route | str,
+    decided_by: DecidedBy | str,
+    escalation_reasons: Iterable[str] = (),
+) -> DecisionRun | None:
+    """Record the route of a run the agent was working on: the only change ever made to a saved run.
+
+    Returns the decided run, or None when the run already had a route or a later run has replaced it,
+    so a repeated or stale job is a no-op. A replaced run may keep a null route forever.
+    The model validates the new route before anything is written.
+    """
+    current = load_decision_run(conn, decision_id)
+    if current.route is not None:
+        return None
+    decided = DecisionRun.model_validate(
+        {
+            **current.model_dump(),
+            "route": route,
+            "decided_by": decided_by,
+            "escalation_reasons": tuple(escalation_reasons),
+        }
+    )
+    updated = conn.execute(
+        "UPDATE decision_run SET route = %s, decided_by = %s, escalation_reasons = %s"
+        " WHERE decision_id = %s AND route IS NULL"
+        " AND NOT EXISTS (SELECT 1 FROM decision_run later WHERE later.replaces_decision_id = %s)",
+        (decided.route.value, decided.decided_by.value, list(decided.escalation_reasons), decision_id, decision_id),
+    )
+    return decided if updated.rowcount == 1 else None
+
+
+def load_current_decision(conn: Conn, txn_id: UUID) -> DecisionRun | None:
+    """The run that no later run replaces. Reruns form one chain per transaction, so there is at most one."""
+    row = conn.execute(
+        "SELECT * FROM decision_run r WHERE r.txn_id = %s"
+        " AND NOT EXISTS (SELECT 1 FROM decision_run later WHERE later.replaces_decision_id = r.decision_id)",
+        (txn_id,),
+    ).fetchone()
+    return _decision_run(row) if row else None
+
+
+def load_decision_history(conn: Conn, txn_id: UUID) -> tuple[DecisionRun, ...]:
+    """Every run for a transaction, newest first. Walks the rerun chain from the initial run, so the
+    order never depends on `created_at`, which the caller sets and which can tie or run backwards."""
+    rows = conn.execute(
+        """
+        WITH RECURSIVE chain AS (
+            SELECT r.*, 0 AS depth FROM decision_run r WHERE r.txn_id = %s AND r.replaces_decision_id IS NULL
+            UNION ALL
+            SELECT n.*, c.depth + 1 FROM decision_run n JOIN chain c ON n.replaces_decision_id = c.decision_id
+        )
+        SELECT * FROM chain ORDER BY depth DESC
+        """,
+        (txn_id,),
+    ).fetchall()
+    return tuple(_decision_run(row) for row in rows)
