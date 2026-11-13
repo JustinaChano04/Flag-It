@@ -71,6 +71,14 @@ The real data can't test every check, so we build three test sets.
 
 **Rule for every fixture row:** record which check it targets and the expected outcome.
 
+## Shared fixtures
+
+`fixtures/` holds a small set of example records that every component's tests use: snapshots for each spend category and for edge cases (no receipt, receipt mismatch, too little history, one cent over a limit), decision runs for every route, flags, agent answers (valid and invalid), queue jobs, and review outcomes. `fixtures/catalog.md` lists each one and what it covers.
+
+They are generated, not hand-written: `python -m flag_it.fixtures.build` rebuilds them from `src/flag_it/fixtures/build.py` and the rules YAML, and a test fails if the committed files are stale. Rebuild after changing the contracts or the rules YAML. Load them in tests with `flag_it.fixtures`, or write them all into an empty Postgres database with `flag_it.fixtures.seed.seed(conn)`.
+
+These are not the test sets in the [Synthetic data plan](#synthetic-data-plan). Rule fixtures for each check's thresholds live with the rule checks.
+
 ## Open questions
 
 - Is there a better public data source than OSU? Record the answer here once settled.

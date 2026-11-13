@@ -1,0 +1,200 @@
+{
+  "agent_flagged": [
+    {
+      "check_id": "OSU-PRH-09a",
+      "decision_id": "526b1a14-502a-5a8f-8127-677fa023a010",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "policy",
+          "note": null,
+          "ref": "OSU-PRH-09",
+          "value": null
+        },
+        {
+          "kind": "field",
+          "note": "Plaques bought as staff service awards",
+          "ref": "transaction.merchant_norm",
+          "value": "PRAIRIE TROPHY AND AWARDS"
+        }
+      ],
+      "flag_id": "c43b202a-14d3-5ba2-bbe4-2d90f170af2f",
+      "result": "fail",
+      "rule_id": "OSU-PRH-09",
+      "score": 0.91,
+      "severity": "prohibited",
+      "source": "llm",
+      "txn_id": "5b966501-dd3c-52f8-ad52-35a9427569f7"
+    }
+  ],
+  "flag_over_limit": [
+    {
+      "check_id": "OSU-LIM-01a",
+      "decision_id": "89fda857-37c2-56fb-b154-474083280a3a",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "field",
+          "note": null,
+          "ref": "transaction.amount",
+          "value": "10000.01"
+        },
+        {
+          "kind": "policy",
+          "note": "Over by 0.01",
+          "ref": "params.max_single_transaction",
+          "value": "10000.00"
+        }
+      ],
+      "flag_id": "6b44bc2f-b052-55d8-997b-cf29afb870f0",
+      "result": "fail",
+      "rule_id": "OSU-LIM-01",
+      "score": 1.0,
+      "severity": "prohibited",
+      "source": "code",
+      "txn_id": "e6f18c14-2b4f-5592-a34e-7749c05526f6"
+    }
+  ],
+  "guardrails_unsure": [
+    {
+      "check_id": "OSU-GEN-06a",
+      "decision_id": "72b30a64-0245-5935-918c-ad259e0d4341",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "field",
+          "note": "Could be a student chapter",
+          "ref": "transaction.merchant_norm",
+          "value": "SOUTHWEST SOCIETY OF ENGINEERS"
+        }
+      ],
+      "flag_id": "3a58a88f-b73f-502c-94bb-ef6e6abbd408",
+      "result": "unclear",
+      "rule_id": "OSU-GEN-06",
+      "score": 0.55,
+      "severity": "prohibited",
+      "source": "llm",
+      "txn_id": "8653d606-95a5-56bf-ab1e-30ff15c46c15"
+    }
+  ],
+  "lodging_stay_1": [
+    {
+      "check_id": "OSU-GEN-04a",
+      "decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+      "due_at": "2025-04-10T23:59:00Z",
+      "evidence": [
+        {
+          "kind": "field",
+          "note": "missing input: receipt",
+          "ref": "receipt",
+          "value": null
+        }
+      ],
+      "flag_id": "d9972361-b87d-5525-b805-b603c0985fe4",
+      "result": "pending",
+      "rule_id": "OSU-GEN-04",
+      "score": 1.0,
+      "severity": "documentation",
+      "source": "code",
+      "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+    },
+    {
+      "check_id": "OSU-TRV-07a",
+      "decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "field",
+          "note": "missing input: receipt",
+          "ref": "receipt",
+          "value": null
+        }
+      ],
+      "flag_id": "9cf48214-8158-5da2-8db6-6b8a9c510340",
+      "result": "not_evaluated",
+      "rule_id": "OSU-TRV-07",
+      "score": 1.0,
+      "severity": "prohibited",
+      "source": "code",
+      "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+    }
+  ],
+  "lodging_stay_2": [
+    {
+      "check_id": "OSU-TRV-07a",
+      "decision_id": "3f373423-fa1f-5b18-ac8d-802cf2e5e8f5",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "receipt",
+          "note": "State and city lodging tax",
+          "ref": "receipt.line_items[1]",
+          "value": "30.06"
+        },
+        {
+          "kind": "policy",
+          "note": null,
+          "ref": "OSU-TRV-07",
+          "value": null
+        }
+      ],
+      "flag_id": "95d5a8ef-7484-5ba0-a6fb-85289d8a3d45",
+      "result": "fail",
+      "rule_id": "OSU-TRV-07",
+      "score": 1.0,
+      "severity": "prohibited",
+      "source": "code",
+      "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+    }
+  ],
+  "missing_document_1": [
+    {
+      "check_id": "OSU-GEN-04a",
+      "decision_id": "c1adbfa1-f0a3-5191-989b-4b6f4bd33e6b",
+      "due_at": "2025-04-10T23:59:00Z",
+      "evidence": [
+        {
+          "kind": "field",
+          "note": "missing input: receipt",
+          "ref": "receipt",
+          "value": null
+        }
+      ],
+      "flag_id": "eb959ed0-1bec-57eb-80fe-e566d8d1af72",
+      "result": "pending",
+      "rule_id": "OSU-GEN-04",
+      "score": 1.0,
+      "severity": "documentation",
+      "source": "code",
+      "txn_id": "d5cbbae9-9e3a-5ef5-8b9e-3aace0e586f1"
+    }
+  ],
+  "missing_document_2": [
+    {
+      "check_id": "OSU-GEN-04a",
+      "decision_id": "e0fff91d-a4da-5d62-b370-59c3e1fae49f",
+      "due_at": null,
+      "evidence": [
+        {
+          "kind": "field",
+          "note": "no itemized receipt by cycle sign-off",
+          "ref": "receipt",
+          "value": null
+        },
+        {
+          "kind": "policy",
+          "note": null,
+          "ref": "OSU-GEN-04",
+          "value": null
+        }
+      ],
+      "flag_id": "f0b149d1-901f-5446-a73e-2bddbc4a18a5",
+      "result": "fail",
+      "rule_id": "OSU-GEN-04",
+      "score": 1.0,
+      "severity": "documentation",
+      "source": "code",
+      "txn_id": "d5cbbae9-9e3a-5ef5-8b9e-3aace0e586f1"
+    }
+  ]
+}

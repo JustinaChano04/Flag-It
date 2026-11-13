@@ -8,6 +8,17 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-12: Shared fixtures are generated, committed, and checked
+
+- **Decided:**
+  - `fixtures/` is built by `src/flag_it/fixtures/build.py` from the contract models and the rules YAML. IDs are `uuid5` of each fixture's name, times are fixed, and amounts at a limit come from `params`. A test fails when the committed files differ from a fresh build, the same pattern as the schema check.
+  - `flag_it.fixtures` loads them as validated, read-only models. `flag_it.fixtures.seed.seed(conn)` writes them all to an empty Postgres database through `flag_it.db.records`, so later plans can run against real rows before the pipeline exists. Plan 03 therefore depends on plan 02 as well as plan 01.
+  - Decision runs carry the fixed constant `FIXTURE_RULES_VERSION`, not a hash of the rules YAML, so an unrelated rules edit never makes the staleness check fail.
+  - Every fixture investigation sends the same two `llm` checks (`OSU-GEN-06a`, `OSU-PRH-09a`). Choosing the real set is plan 21's job.
+  - The screener thresholds (`0.5`, `0.2`) and the low-confidence agent score (`0.42`) are constants in `build.py`, because their `params` don't exist yet. Plan 16 must move them to the rules YAML and rebuild the fixtures; nothing fails if it forgets.
+- **Why:** Hand-written JSON drifts from the contracts and the rules, and every change would be edited by hand in many places. Generated files stay in step, and the check makes drift visible in review.
+- **Rejected:** Hand-written JSON validated by a test. Builder functions only, with no JSON: the review app and non-Python tools can't read them.
+
 ## 2026-11-11: Database: Alembic with hand-written SQL, append-only by trigger
 
 - **Decided:**

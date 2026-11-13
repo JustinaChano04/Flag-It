@@ -1,0 +1,202 @@
+{
+  "agent_approved": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "agent",
+    "decision_id": "25db5879-ef39-5f04-a363-fe8398540df8",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "agent_approve",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "b80d2067-dddf-57fb-a425-4c4f96ce5497",
+    "trigger": "initial",
+    "txn_id": "f9ff3b87-6fb2-5bc1-8408-53fed81350ae"
+  },
+  "agent_failed": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "guardrails",
+    "decision_id": "43602801-a17e-5734-90e7-72ea53838a48",
+    "escalation_reasons": [
+      "agent_failed"
+    ],
+    "replaces_decision_id": null,
+    "route": "human_review",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "5b24f268-9300-5dad-83a7-acc6af859543",
+    "trigger": "initial",
+    "txn_id": "27165adc-e4ed-5af8-ad42-10503c5fa1ac"
+  },
+  "agent_flagged": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "agent",
+    "decision_id": "526b1a14-502a-5a8f-8127-677fa023a010",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "agent_flag",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "4f2ea976-9f9a-5cf5-85d4-d364967136c0",
+    "trigger": "initial",
+    "txn_id": "5b966501-dd3c-52f8-ad52-35a9427569f7"
+  },
+  "agent_working": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": null,
+    "decision_id": "212edd66-3050-5f33-98a6-606e1d3b5cd0",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": null,
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "e9900916-162a-579e-9a83-c82032fba0ca",
+    "trigger": "initial",
+    "txn_id": "f23e0ae7-bfcc-5cff-a79e-0c79315ca25c"
+  },
+  "auto_approved": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "screener",
+    "decision_id": "c75cc8ba-51da-5912-a1b9-f9266fe1e0f4",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "auto_approve",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "screener-lgbm-1",
+      "probability": 0.04,
+      "threshold": 0.2
+    },
+    "snapshot_id": "b0ea01ac-574c-5190-aea1-11705228d2f3",
+    "trigger": "initial",
+    "txn_id": "a5aebb0c-ea84-576d-982d-6f5d2c743c5e"
+  },
+  "flag_over_limit": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "rules",
+    "decision_id": "89fda857-37c2-56fb-b154-474083280a3a",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "flag",
+    "rules_version": "fixtures-1",
+    "screener": null,
+    "snapshot_id": "3a0d4b3d-a9d9-5b18-bd88-94043aef15b4",
+    "trigger": "initial",
+    "txn_id": "e6f18c14-2b4f-5592-a34e-7749c05526f6"
+  },
+  "guardrails_low_confidence": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "guardrails",
+    "decision_id": "8c90148c-68ff-5050-8da9-97cafcfd0990",
+    "escalation_reasons": [
+      "low_confidence:OSU-PRH-09a"
+    ],
+    "replaces_decision_id": null,
+    "route": "human_review",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "35c67800-47b2-5eaa-bf84-c3424c4188ab",
+    "trigger": "initial",
+    "txn_id": "e026324c-149f-5d46-9246-07a53c8c53ad"
+  },
+  "guardrails_unsure": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "guardrails",
+    "decision_id": "72b30a64-0245-5935-918c-ad259e0d4341",
+    "escalation_reasons": [
+      "unsure:OSU-GEN-06a"
+    ],
+    "replaces_decision_id": null,
+    "route": "human_review",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "7df422ff-54f8-5293-ba62-007ccfab66aa",
+    "trigger": "initial",
+    "txn_id": "8653d606-95a5-56bf-ab1e-30ff15c46c15"
+  },
+  "lodging_stay_1": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "agent",
+    "decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "agent_approve",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "d2f58e14-2abd-5012-83a7-606a94569f96",
+    "trigger": "initial",
+    "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+  },
+  "lodging_stay_2": {
+    "created_at": "2025-03-06T15:00:00Z",
+    "decided_by": "rerun",
+    "decision_id": "3f373423-fa1f-5b18-ac8d-802cf2e5e8f5",
+    "escalation_reasons": [
+      "review_conflict"
+    ],
+    "replaces_decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+    "route": "human_review",
+    "rules_version": "fixtures-1",
+    "screener": null,
+    "snapshot_id": "0271d3fb-47a6-5b8b-bd29-cffb8d5f91ab",
+    "trigger": "late_receipt",
+    "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+  },
+  "missing_document_1": {
+    "created_at": "2025-03-03T15:00:00Z",
+    "decided_by": "agent",
+    "decision_id": "c1adbfa1-f0a3-5191-989b-4b6f4bd33e6b",
+    "escalation_reasons": [],
+    "replaces_decision_id": null,
+    "route": "agent_approve",
+    "rules_version": "fixtures-1",
+    "screener": {
+      "model_version": "stand-in-1",
+      "probability": 1.0,
+      "threshold": 0.5
+    },
+    "snapshot_id": "66a2fb7a-d5e0-5c5b-b79a-175d104ef79a",
+    "trigger": "initial",
+    "txn_id": "d5cbbae9-9e3a-5ef5-8b9e-3aace0e586f1"
+  },
+  "missing_document_2": {
+    "created_at": "2025-04-11T06:00:00Z",
+    "decided_by": "rules",
+    "decision_id": "e0fff91d-a4da-5d62-b370-59c3e1fae49f",
+    "escalation_reasons": [],
+    "replaces_decision_id": "c1adbfa1-f0a3-5191-989b-4b6f4bd33e6b",
+    "route": "flag",
+    "rules_version": "fixtures-1",
+    "screener": null,
+    "snapshot_id": "b3925bb6-5780-5b8a-9a63-df187aee9f26",
+    "trigger": "deadline",
+    "txn_id": "d5cbbae9-9e3a-5ef5-8b9e-3aace0e586f1"
+  }
+}

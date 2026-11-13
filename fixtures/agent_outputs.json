@@ -1,0 +1,147 @@
+{
+  "agent_approved": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.93,
+        "evidence": [],
+        "result": "pass"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.95,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  },
+  "agent_flagged": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.88,
+        "evidence": [],
+        "result": "pass"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.91,
+        "evidence": [
+          {
+            "kind": "policy",
+            "note": null,
+            "ref": "OSU-PRH-09",
+            "value": null
+          },
+          {
+            "kind": "field",
+            "note": "Plaques bought as staff service awards",
+            "ref": "transaction.merchant_norm",
+            "value": "PRAIRIE TROPHY AND AWARDS"
+          }
+        ],
+        "result": "fail"
+      }
+    ]
+  },
+  "guardrails_low_confidence": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.86,
+        "evidence": [],
+        "result": "pass"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.42,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  },
+  "guardrails_unsure": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.55,
+        "evidence": [
+          {
+            "kind": "field",
+            "note": "Could be a student chapter",
+            "ref": "transaction.merchant_norm",
+            "value": "SOUTHWEST SOCIETY OF ENGINEERS"
+          }
+        ],
+        "result": "unsure"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.9,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  },
+  "lodging_stay_1": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.93,
+        "evidence": [],
+        "result": "pass"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.95,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  },
+  "missing_document_1": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.93,
+        "evidence": [],
+        "result": "pass"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.95,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  },
+  "unresolved_citation": {
+    "verdicts": [
+      {
+        "check_id": "OSU-GEN-06a",
+        "confidence": 0.8,
+        "evidence": [
+          {
+            "kind": "policy",
+            "note": null,
+            "ref": "OSU-GEN-06",
+            "value": null
+          },
+          {
+            "kind": "receipt",
+            "note": "No such line",
+            "ref": "receipt.line_items[4]",
+            "value": "12.00"
+          }
+        ],
+        "result": "fail"
+      },
+      {
+        "check_id": "OSU-PRH-09a",
+        "confidence": 0.9,
+        "evidence": [],
+        "result": "pass"
+      }
+    ]
+  }
+}

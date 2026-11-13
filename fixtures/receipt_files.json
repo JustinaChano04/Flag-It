@@ -1,0 +1,38 @@
+{
+  "lodging_stay_folio": {
+    "content_type": "application/pdf",
+    "receipt_id": "14fb6ab3-6c4a-5be8-a832-1997986de683",
+    "sha256": "4b76472fa9cd984050984fe4d10ce75b933341ab304d45396947c7f43316f10d",
+    "size_bytes": 2048,
+    "storage_key": "fixtures/lodging_stay_folio.pdf",
+    "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6",
+    "uploaded_at": "2025-03-06T14:00:00Z"
+  },
+  "receipt_matched": {
+    "content_type": "application/pdf",
+    "receipt_id": "36b2deb8-9585-5da3-80bb-b4d391dc58c3",
+    "sha256": "a2b8dce395e7b41007ab91a3b9159532be202ce27516ebf699c00f0bab0365d1",
+    "size_bytes": 2048,
+    "storage_key": "fixtures/receipt_matched.pdf",
+    "txn_id": "273dc441-64d1-5812-97ae-9415a9e9d19e",
+    "uploaded_at": "2025-03-03T14:00:00Z"
+  },
+  "receipt_mismatch": {
+    "content_type": "application/pdf",
+    "receipt_id": "ee03367b-93f3-563c-a615-8a37c77f18b6",
+    "sha256": "098bfc5514a71adb580884f2c4f0b45444713f6d14f4bdb532f6b2f7d5fc6e97",
+    "size_bytes": 2048,
+    "storage_key": "fixtures/receipt_mismatch.pdf",
+    "txn_id": "aa897b79-0d38-52a1-a06a-015125d91895",
+    "uploaded_at": "2025-03-03T14:00:00Z"
+  },
+  "receipt_unreadable": {
+    "content_type": "application/pdf",
+    "receipt_id": "28c7a4c4-6813-5f03-85e6-10faf13cf247",
+    "sha256": "477fe3a876048b1a73913be1d5e1ad7b75e6d6bfad6c0cd5d586b545630ea559",
+    "size_bytes": 2048,
+    "storage_key": "fixtures/receipt_unreadable.pdf",
+    "txn_id": "ddcbf53b-76fd-5997-b830-6936bff36ce5",
+    "uploaded_at": "2025-03-03T14:00:00Z"
+  }
+}

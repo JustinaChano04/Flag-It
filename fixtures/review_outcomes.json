@@ -1,0 +1,73 @@
+{
+  "agent_flagged_review": {
+    "created_at": "2025-03-03T17:00:00Z",
+    "decision_id": "526b1a14-502a-5a8f-8127-677fa023a010",
+    "final": "flag",
+    "missed_rule_ids": [
+      "OSU-PRH-10"
+    ],
+    "per_flag": [
+      {
+        "agree": true,
+        "flag_id": "c43b202a-14d3-5ba2-bbe4-2d90f170af2f",
+        "note": null
+      }
+    ],
+    "reason": "Plaques bought as staff service awards.",
+    "review_id": "b62835cd-b270-53ab-943d-c9570721f7c0",
+    "reviewer": "reviewer.b@example.edu"
+  },
+  "guardrails_unsure_review": {
+    "created_at": "2025-03-03T17:00:00Z",
+    "decision_id": "72b30a64-0245-5935-918c-ad259e0d4341",
+    "final": "approve",
+    "missed_rule_ids": [],
+    "per_flag": [
+      {
+        "agree": false,
+        "flag_id": "3a58a88f-b73f-502c-94bb-ef6e6abbd408",
+        "note": "A professional society, not a student organization."
+      }
+    ],
+    "reason": "Department membership.",
+    "review_id": "21f60d56-2dd2-52e7-90b6-6931831f39c2",
+    "reviewer": "reviewer.a@example.edu"
+  },
+  "lodging_stay_1_review": {
+    "created_at": "2025-03-03T17:00:00Z",
+    "decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+    "final": "approve",
+    "missed_rule_ids": [],
+    "per_flag": [
+      {
+        "agree": true,
+        "flag_id": "d9972361-b87d-5525-b805-b603c0985fe4",
+        "note": null
+      },
+      {
+        "agree": true,
+        "flag_id": "9cf48214-8158-5da2-8db6-6b8a9c510340",
+        "note": null
+      }
+    ],
+    "reason": "Conference hotel stay. Folio to follow.",
+    "review_id": "c31e8016-1380-58ad-aa22-7a989a20b492",
+    "reviewer": "reviewer.a@example.edu"
+  },
+  "lodging_stay_2_review": {
+    "created_at": "2025-03-06T17:00:00Z",
+    "decision_id": "3f373423-fa1f-5b18-ac8d-802cf2e5e8f5",
+    "final": "flag",
+    "missed_rule_ids": [],
+    "per_flag": [
+      {
+        "agree": true,
+        "flag_id": "95d5a8ef-7484-5ba0-a6fb-85289d8a3d45",
+        "note": null
+      }
+    ],
+    "reason": "Folio shows Oklahoma lodging tax; the university is exempt.",
+    "review_id": "0d09f8a1-8d7e-5f8e-9b73-fd6c98156fcb",
+    "reviewer": "reviewer.b@example.edu"
+  }
+}
