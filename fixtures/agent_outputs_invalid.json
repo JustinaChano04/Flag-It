@@ -1,0 +1,86 @@
+{
+  "check_twice": {
+    "error": "only once",
+    "output": {
+      "verdicts": [
+        {
+          "check_id": "OSU-GEN-06a",
+          "confidence": 0.9,
+          "evidence": [],
+          "result": "pass"
+        },
+        {
+          "check_id": "OSU-GEN-06a",
+          "confidence": 0.9,
+          "evidence": [],
+          "result": "pass"
+        }
+      ]
+    }
+  },
+  "confidence_over_one": {
+    "error": "less than or equal to 1",
+    "output": {
+      "verdicts": [
+        {
+          "check_id": "OSU-GEN-06a",
+          "confidence": 1.3,
+          "evidence": [],
+          "result": "pass"
+        }
+      ]
+    }
+  },
+  "fail_without_policy": {
+    "error": "must include a policy citation",
+    "output": {
+      "verdicts": [
+        {
+          "check_id": "OSU-PRH-09a",
+          "confidence": 0.9,
+          "evidence": [
+            {
+              "kind": "field",
+              "ref": "transaction.amount",
+              "value": "250.00"
+            }
+          ],
+          "result": "fail"
+        }
+      ]
+    }
+  },
+  "no_verdicts": {
+    "error": "at least 1 item",
+    "output": {
+      "verdicts": []
+    }
+  },
+  "unknown_field": {
+    "error": "Extra inputs are not permitted",
+    "output": {
+      "verdicts": [
+        {
+          "check_id": "OSU-GEN-06a",
+          "confidence": 0.9,
+          "evidence": [],
+          "reasoning": "Looks fine.",
+          "result": "pass"
+        }
+      ]
+    }
+  },
+  "unsure_without_evidence": {
+    "error": "needs at least one citation",
+    "output": {
+      "verdicts": [
+        {
+          "check_id": "OSU-GEN-06a",
+          "confidence": 0.5,
+          "evidence": [],
+          "result": "unsure"
+        }
+      ]
+    }
+  }
+}

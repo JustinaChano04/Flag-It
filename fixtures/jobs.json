@@ -1,0 +1,98 @@
+{
+  "investigate": {
+    "agent_approved": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "25db5879-ef39-5f04-a363-fe8398540df8",
+      "snapshot_id": "b80d2067-dddf-57fb-a425-4c4f96ce5497"
+    },
+    "agent_failed": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "43602801-a17e-5734-90e7-72ea53838a48",
+      "snapshot_id": "5b24f268-9300-5dad-83a7-acc6af859543"
+    },
+    "agent_flagged": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "526b1a14-502a-5a8f-8127-677fa023a010",
+      "snapshot_id": "4f2ea976-9f9a-5cf5-85d4-d364967136c0"
+    },
+    "agent_working": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "212edd66-3050-5f33-98a6-606e1d3b5cd0",
+      "snapshot_id": "e9900916-162a-579e-9a83-c82032fba0ca"
+    },
+    "guardrails_low_confidence": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "8c90148c-68ff-5050-8da9-97cafcfd0990",
+      "snapshot_id": "35c67800-47b2-5eaa-bf84-c3424c4188ab"
+    },
+    "guardrails_unsure": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "72b30a64-0245-5935-918c-ad259e0d4341",
+      "snapshot_id": "7df422ff-54f8-5293-ba62-007ccfab66aa"
+    },
+    "lodging_stay_1": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "f89eb77c-edfc-5527-8229-382069f903f9",
+      "snapshot_id": "d2f58e14-2abd-5012-83a7-606a94569f96"
+    },
+    "missing_document_1": {
+      "check_ids": [
+        "OSU-GEN-06a",
+        "OSU-PRH-09a"
+      ],
+      "contract_version": "1.0.0",
+      "decision_id": "c1adbfa1-f0a3-5191-989b-4b6f4bd33e6b",
+      "snapshot_id": "66a2fb7a-d5e0-5c5b-b79a-175d104ef79a"
+    }
+  },
+  "read_receipt": {
+    "lodging_stay_folio": {
+      "contract_version": "1.0.0",
+      "receipt_id": "14fb6ab3-6c4a-5be8-a832-1997986de683",
+      "txn_id": "2248969e-aa25-5ce5-8096-b44ae6d15ef6"
+    },
+    "receipt_matched": {
+      "contract_version": "1.0.0",
+      "receipt_id": "36b2deb8-9585-5da3-80bb-b4d391dc58c3",
+      "txn_id": "273dc441-64d1-5812-97ae-9415a9e9d19e"
+    },
+    "receipt_mismatch": {
+      "contract_version": "1.0.0",
+      "receipt_id": "ee03367b-93f3-563c-a615-8a37c77f18b6",
+      "txn_id": "aa897b79-0d38-52a1-a06a-015125d91895"
+    },
+    "receipt_unreadable": {
+      "contract_version": "1.0.0",
+      "receipt_id": "28c7a4c4-6813-5f03-85e6-10faf13cf247",
+      "txn_id": "ddcbf53b-76fd-5997-b830-6936bff36ce5"
+    }
+  }
+}
