@@ -14,6 +14,8 @@ from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
+from flag_it.contracts.decide import AgentOutput, DecisionRun, Flag, ScreenerResult
+from flag_it.contracts.enums import AgentResult
 from flag_it.contracts.rules import RuleSet
 from flag_it.contracts.snapshot import CombinedExpense, CombinedExpenseSnapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
@@ -304,3 +306,165 @@ def snapshots(rules: RuleSet) -> dict[str, CombinedExpenseSnapshot]:
         )
         result[name] = CombinedExpenseSnapshot.build(payload, snapshot_id=fid("snapshot", name), created_at=spec.taken_at)
     return result
+
+
+STAND_IN = ScreenerResult(probability=1.0, threshold=0.5, model_version="stand-in-1")
+TRAINED = ScreenerResult(probability=0.04, threshold=0.2, model_version="screener-lgbm-1")
+
+# The llm checks every fixture investigation sends. Both apply to every category.
+AGENT_CHECKS = ("OSU-GEN-06a", "OSU-PRH-09a")
+
+
+def decision_runs(rules: RuleSet, snaps: dict[str, CombinedExpenseSnapshot]) -> dict[str, DecisionRun]:
+    def run(name: str, snapshot: str, *, created_at=DECIDED_AT, trigger="initial", replaces=None, **fields):
+        snap = snaps[snapshot]
+        return DecisionRun(
+            decision_id=fid("decision", name),
+            txn_id=snap.txn_id,
+            snapshot_id=snap.snapshot_id,
+            trigger=trigger,
+            replaces_decision_id=fid("decision", replaces) if replaces else None,
+            rules_version=FIXTURE_RULES_VERSION,
+            created_at=created_at,
+            **fields,
+        )
+
+    agent = {"decided_by": "agent", "screener": STAND_IN}
+    guardrails = {"route": "human_review", "decided_by": "guardrails", "screener": STAND_IN}
+    return {
+        "flag_over_limit": run("flag_over_limit", "over_single_limit", route="flag", decided_by="rules"),
+        "auto_approved": run(
+            "auto_approved", "cat_office_general_supplies", route="auto_approve", decided_by="screener",
+            screener=TRAINED),
+        "agent_working": run("agent_working", "with_purpose", screener=STAND_IN),
+        "agent_approved": run("agent_approved", "cat_meals_refreshments", route="agent_approve", **agent),
+        "agent_flagged": run("agent_flagged", "cat_restricted_items", route="agent_flag", **agent),
+        "guardrails_unsure": run(
+            "guardrails_unsure", "cat_registrations_memberships", escalation_reasons=["unsure:OSU-GEN-06a"],
+            **guardrails),
+        "guardrails_low_confidence": run(
+            "guardrails_low_confidence", "cat_clothing_ppe", escalation_reasons=["low_confidence:OSU-PRH-09a"],
+            **guardrails),
+        "agent_failed": run(
+            "agent_failed", "cat_software_subscriptions", escalation_reasons=["agent_failed"], **guardrails),
+        "lodging_stay_1": run("lodging_stay_1", "lodging_stay_1", route="agent_approve", **agent),
+        "lodging_stay_2": run(
+            "lodging_stay_2", "lodging_stay_2", trigger="late_receipt", replaces="lodging_stay_1",
+            created_at=LATE_AT, route="human_review", decided_by="rerun", escalation_reasons=["review_conflict"]),
+        "missing_document_1": run("missing_document_1", "missing_document_1", route="agent_approve", **agent),
+        "missing_document_2": run(
+            "missing_document_2", "missing_document_2", trigger="deadline", replaces="missing_document_1",
+            created_at=DEADLINE_AT, route="flag", decided_by="rules"),
+    }
+
+
+def _field(ref: str, value, note: str | None = None) -> dict:
+    return {"kind": "field", "ref": ref, "value": value, "note": note}
+
+
+def _policy(ref: str, value=None, note: str | None = None) -> dict:
+    return {"kind": "policy", "ref": ref, "value": value, "note": note}
+
+
+def agent_outputs() -> dict[str, AgentOutput]:
+    """The agent's answer for each run it finished, by run name, plus unresolved_citation, an
+    answer that is valid JSON but cites a receipt line that doesn't exist (the guardrails must catch it).
+    Low confidence below is 0.42; plan 16 sets the real threshold in the rules YAML."""
+
+    def verdict(check_id: str, result: str, confidence: float, *evidence: dict) -> dict:
+        return {"check_id": check_id, "result": result, "confidence": confidence, "evidence": list(evidence)}
+
+    both_pass = [verdict("OSU-GEN-06a", "pass", 0.93), verdict("OSU-PRH-09a", "pass", 0.95)]
+    answers = {
+        "agent_approved": both_pass,
+        "agent_flagged": [
+            verdict("OSU-GEN-06a", "pass", 0.88),
+            verdict(
+                "OSU-PRH-09a", "fail", 0.91,
+                _policy("OSU-PRH-09"),
+                _field("transaction.merchant_norm", "PRAIRIE TROPHY AND AWARDS", "Plaques bought as staff service awards"),
+            ),
+        ],
+        "guardrails_unsure": [
+            verdict(
+                "OSU-GEN-06a", "unsure", 0.55,
+                _field("transaction.merchant_norm", "SOUTHWEST SOCIETY OF ENGINEERS", "Could be a student chapter"),
+            ),
+            verdict("OSU-PRH-09a", "pass", 0.9),
+        ],
+        "guardrails_low_confidence": [verdict("OSU-GEN-06a", "pass", 0.86), verdict("OSU-PRH-09a", "pass", 0.42)],
+        "lodging_stay_1": both_pass,
+        "missing_document_1": both_pass,
+        "unresolved_citation": [
+            verdict(
+                "OSU-GEN-06a", "fail", 0.8,
+                _policy("OSU-GEN-06"),
+                {"kind": "receipt", "ref": "receipt.line_items[4]", "value": "12.00", "note": "No such line"},
+            ),
+            verdict("OSU-PRH-09a", "pass", 0.9),
+        ],
+    }
+    return {name: AgentOutput.model_validate({"verdicts": verdicts}) for name, verdicts in answers.items()}
+
+
+def flags(
+    rules: RuleSet, runs: dict[str, DecisionRun], outputs: dict[str, AgentOutput]
+) -> dict[str, tuple[Flag, ...]]:
+    """Flags by run name. Code flags are listed here; agent flags are copied from the agent's
+    fail and unsure verdicts, the way plan 16 will write them."""
+
+    def flag(run_name: str, check_id: str, result: str, evidence, *, score=1.0, due_at=None) -> Flag:
+        rule, check = rules.check(check_id)
+        run = runs[run_name]
+        return Flag(
+            flag_id=fid("flag", f"{run_name}:{check_id}"),
+            decision_id=run.decision_id,
+            txn_id=run.txn_id,
+            rule_id=rule.id,
+            check_id=check_id,
+            result=result,
+            severity=rule.severity,
+            evidence=evidence,
+            score=score,
+            source=check.method.value,
+            due_at=due_at,
+        )
+
+    limit = Decimal(str(rules.rule("OSU-LIM-01").param("max_single_transaction"))).quantize(Decimal("0.01"))
+    missing_receipt = _field("receipt", None, "missing input: receipt")
+    found: dict[str, list[Flag]] = {
+        "flag_over_limit": [
+            flag("flag_over_limit", "OSU-LIM-01a", "fail", [
+                _field("transaction.amount", str(limit + Decimal("0.01"))),
+                _policy("params.max_single_transaction", str(limit), "Over by 0.01"),
+            ]),
+        ],
+        "lodging_stay_1": [
+            flag("lodging_stay_1", "OSU-GEN-04a", "pending", [missing_receipt], due_at=SIGNOFF),
+            flag("lodging_stay_1", "OSU-TRV-07a", "not_evaluated", [missing_receipt]),
+        ],
+        "lodging_stay_2": [
+            flag("lodging_stay_2", "OSU-TRV-07a", "fail", [
+                {"kind": "receipt", "ref": "receipt.line_items[1]", "value": "30.06",
+                 "note": "State and city lodging tax"},
+                _policy("OSU-TRV-07"),
+            ]),
+        ],
+        "missing_document_1": [
+            flag("missing_document_1", "OSU-GEN-04a", "pending", [missing_receipt], due_at=SIGNOFF),
+        ],
+        "missing_document_2": [
+            flag("missing_document_2", "OSU-GEN-04a", "fail", [
+                _field("receipt", None, "no itemized receipt by cycle sign-off"),
+                _policy("OSU-GEN-04"),
+            ]),
+        ],
+    }
+    for name, output in outputs.items():
+        if name not in runs:
+            continue
+        for v in output.verdicts:
+            if v.result is not AgentResult.PASS:
+                result = "fail" if v.result is AgentResult.FAIL else "unclear"
+                found.setdefault(name, []).append(flag(name, v.check_id, result, v.evidence, score=v.confidence))
+    return {name: tuple(run_flags) for name, run_flags in found.items()}
