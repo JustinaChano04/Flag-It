@@ -8,14 +8,17 @@ amounts at a limit come from the rule's params. Rebuild after any change to the 
 rules YAML. What each fixture covers: fixtures/catalog.md.
 """
 
+import hashlib
 from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from flag_it.contracts.rules import RuleSet
+from flag_it.contracts.snapshot import CombinedExpense, CombinedExpenseSnapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
-from flag_it.contracts.understand import AnomalyResult, CategoryResult
+from flag_it.contracts.understand import AnomalyResult, CategoryResult, ReceiptExtraction
+from flag_it.db.rows import ReceiptFile
 
 NAMESPACE = uuid5(NAMESPACE_URL, "https://github.com/JustinaChano04/Flag-It/fixtures")
 
@@ -204,3 +207,100 @@ def anomaly_result(name: str, spec: TxnSpec) -> AnomalyResult:
         "as_of": datetime.combine(spec.transaction_date, time(0), tzinfo=timezone.utc),
     }
     return AnomalyResult(**(data | ANOMALY_OVERRIDES.get(name, {})))
+
+
+RECEIPT_TXN = {
+    "receipt_matched": "receipt_matched",
+    "receipt_mismatch": "receipt_mismatch",
+    "receipt_unreadable": "receipt_unreadable",
+    "lodging_stay_folio": "lodging_stay",
+}
+
+
+def receipts() -> dict[str, ReceiptExtraction]:
+    """Receipt extractions by name. Each was uploaded against the transaction in RECEIPT_TXN."""
+
+    def receipt(name: str, **fields) -> ReceiptExtraction:
+        return ReceiptExtraction(
+            receipt_id=fid("receipt", name), txn_id=fid("txn", RECEIPT_TXN[name]), reader_model=READER, **fields
+        )
+
+    room = {"description": "Room, 1 night", "quantity": "1", "line_type": "room"}
+    return {
+        "receipt_matched": receipt(
+            "receipt_matched", match_status="matched", merchant="Cimarron Inn", receipt_date=date(2025, 2, 27),
+            subtotal="129.00", total="129.00",
+            line_items=[room | {"unit_price": "129.00", "amount": "129.00"}],
+        ),
+        "receipt_mismatch": receipt(
+            "receipt_mismatch", match_status="mismatch", merchant="Chisholm Books", receipt_date=date(2025, 2, 27),
+            subtotal="68.40", total="68.40",
+            line_items=[{"description": "Field guide", "quantity": "2", "unit_price": "34.20", "amount": "68.40"}],
+        ),
+        "receipt_unreadable": receipt("receipt_unreadable", match_status="unmatched"),
+        "lodging_stay_folio": receipt(
+            "lodging_stay_folio", match_status="matched", merchant="Cimarron Inn", receipt_date=date(2025, 2, 28),
+            subtotal="289.00", tax="30.06", total="319.06",
+            line_items=[
+                room | {"unit_price": "289.00", "amount": "289.00"},
+                {"description": "State and city lodging tax", "quantity": "1", "amount": "30.06", "line_type": "tax"},
+            ],
+        ),
+    }
+
+
+def receipt_file(name: str, receipt: ReceiptExtraction) -> ReceiptFile:
+    """The uploaded-file row. The storage key points at nothing: fixtures have no images."""
+    uploaded = LATE_AT if name == "lodging_stay_folio" else DECIDED_AT
+    return ReceiptFile(
+        receipt_id=receipt.receipt_id,
+        txn_id=receipt.txn_id,
+        storage_key=f"fixtures/{name}.pdf",
+        content_type="application/pdf",
+        sha256=hashlib.sha256(name.encode()).hexdigest(),
+        size_bytes=2048,
+        uploaded_at=uploaded - timedelta(hours=1),
+    )
+
+
+@dataclass(frozen=True)
+class SnapshotSpec:
+    txn: str
+    receipt: str | None
+    taken_at: datetime
+    note: str | None = None  # for catalog.md; the transaction's note is used when empty
+
+
+CHAIN_SNAPSHOTS = {
+    "lodging_stay_1": SnapshotSpec("lodging_stay", None, DECIDED_AT, "Lodging, before the folio arrives."),
+    "lodging_stay_2": SnapshotSpec(
+        "lodging_stay", "lodging_stay_folio", LATE_AT, "Same stay with the folio, which has a lodging tax line."),
+    "missing_document_1": SnapshotSpec("missing_document", None, DECIDED_AT, "Before cycle sign-off."),
+    "missing_document_2": SnapshotSpec("missing_document", None, DEADLINE_AT, "After sign-off, still no receipt."),
+}
+
+
+def snapshot_specs(rules: RuleSet) -> dict[str, SnapshotSpec]:
+    """One snapshot per transaction, named after it, except the chains, which get one per run."""
+    found = receipts()
+    single = {
+        name: SnapshotSpec(name, name if name in found else None, DECIDED_AT)
+        for name in transactions(rules)
+        if name not in CHAIN_TXNS
+    }
+    return single | CHAIN_SNAPSHOTS
+
+
+def snapshots(rules: RuleSet) -> dict[str, CombinedExpenseSnapshot]:
+    txns, found = transactions(rules), receipts()
+    result = {}
+    for name, spec in snapshot_specs(rules).items():
+        txn = txns[spec.txn]
+        payload = CombinedExpense(
+            transaction=normalized_transaction(spec.txn, txn),
+            receipt=found[spec.receipt] if spec.receipt else None,
+            category=category_result(spec.txn, txn),
+            anomaly=anomaly_result(spec.txn, txn),
+        )
+        result[name] = CombinedExpenseSnapshot.build(payload, snapshot_id=fid("snapshot", name), created_at=spec.taken_at)
+    return result
