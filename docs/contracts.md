@@ -8,7 +8,7 @@ This page is the contract between the parts of Flag-It. It says what each stage 
 **Status:** the field definitions now live in code, in `src/flag_it/contracts/`. The generated JSON Schemas are in `src/flag_it/contracts/schema/`. If this page and the code disagree on a field, the code wins, and this page should be fixed. This page keeps the flow, the handoffs, and the reasons.
 
 **Related pages:**
-- Database tables, types, and indexes: [schema.dbml](schema.dbml).
+- Database tables, types, and indexes: [schema.dbml](schema.dbml), generated from the migrations in `src/flag_it/db/migrations/`.
 - The rules and checks themselves: `policies/osu/osu_rules.yaml`, explained in `policies/README.md`.
 
 ## Terms used on this page
@@ -139,7 +139,7 @@ Reviewers can also review other routes. These outcomes become labels for the ris
 
 A transaction without a receipt is decided right away. Checks that need a receipt report `not_evaluated: missing receipt`. A rule that requires a receipt treats the missing receipt as a finding.
 
-When the receipt arrives, it is read and matched, and the pipeline starts a **new snapshot and a new decision run**. The old run stays as history. The current decision for a transaction is its newest run.
+When the receipt arrives, it is read and matched, and the pipeline starts a **new snapshot and a new decision run**. The old run stays as history. A transaction's runs form one chain: each run replaces at most one earlier run, and only one run per transaction is `initial`. The current decision is the run that no later run replaces.
 
 Every run records why it ran (`trigger`: `initial`, `late_receipt`, or `deadline`) and which run it replaces (`replaces_decision_id`, empty for `initial`). So a transaction's history reads as a chain: run 1 (initial) → run 2 (late receipt) → run 3 (deadline).
 
@@ -160,7 +160,8 @@ Some checks have a deadline, such as a document due at billing-cycle sign-off. B
 - **`severity` comes from the rule** in the rules YAML: `prohibited`, `conditional`, `documentation`, or `guidance`. It describes how much the rule matters, so it is the same for every flag of that rule, whatever the transaction. What is specific to one transaction is the flag's `result` (what happened) and `score` (how sure we are).
 - **`score` is confidence,** from 0 to 1, in the flag's `result`. Code checks score 1.0. The agent gives its stated confidence. How far over a limit a charge was goes in `evidence`, not in `score`.
 - **Evidence is a list of citations** that the guardrails can check (see [Evidence](#evidence)).
-- **Results are append-only,** keyed on `txn_id` plus a version. Snapshots, decision runs, flags, and review outcomes are never edited.
+- **Results are append-only,** keyed on `txn_id` plus a version. Snapshots, decision runs, flags, and review outcomes are never edited. The one exception: a decision run's `route`, `decided_by`, and `escalation_reasons` are filled in once, when the agent finishes. The database enforces both.
+- **Some rows are database-only.** An uploaded receipt file (`receipt_file`) and a saved agent answer (`agent_verdict`) are stored but never handed from one stage to another, so they have no contract record. Their models are in `src/flag_it/db/rows.py`.
 - **IDs are stable.** Rule and check IDs are never reused or renumbered. Retire one with `status: retired`.
 - **Thresholds live in the rules YAML** (`params`), not in code.
 - **Money is a decimal,** never a float.
@@ -352,14 +353,14 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 |---|---|
 | `decision_id` | Key. |
 | `txn_id`, `snapshot_id` | What was decided and the exact input. |
-| `route` | `flag`, `auto_approve`, `agent_approve`, `agent_flag`, or `human_review`. Empty while the agent is still working. |
+| `route` | `flag`, `auto_approve`, `agent_approve`, `agent_flag`, or `human_review`. Empty while the agent is still working, then filled in once. |
 | `decided_by` | Who chose the route. Each can choose only its own routes: `rules` → `flag`; `screener` → `auto_approve`; `agent` → `agent_approve` or `agent_flag`; `guardrails` → `human_review` (the agent's answer wasn't trustworthy); `rerun` → `human_review` (the run disagreed with an earlier review). |
 | `trigger` | Why the run started: `initial`, `late_receipt`, or `deadline`. |
 | `replaces_decision_id` | The run this one replaces. Empty exactly when `trigger` is `initial`. |
 | `screener` | `{probability, threshold, model_version}`, or empty if the screener was skipped. The threshold is copied from that model version's metadata. A probability below the threshold auto-approves. |
 | `escalation_reasons` | Present exactly when the route is `human_review`. One or more of: `unsure:<check_id>`, `low_confidence:<check_id>`, `citation_unresolved`, `invalid_output`, `agent_failed`, `review_conflict`. |
 | `rules_version` | The rules YAML used for this run: its `policy.version`, a `+`, and the first 12 characters of the file's SHA-256 hash, for example `2026-05+3f9a1c0b7e2d`. It changes whenever the file changes. |
-| `created_at` | When the run started. The newest run per `txn_id` is the current decision. |
+| `created_at` | When the run started. |
 
 ### Flag
 

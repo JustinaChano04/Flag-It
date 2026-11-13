@@ -8,6 +8,29 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-11: Database: Alembic with hand-written SQL, append-only by trigger
+
+- **Decided:**
+  - Migrations are Alembic revisions of hand-written SQL. Code talks to Postgres through psycopg 3 (sync API), with no ORM. `src/flag_it/db/records.py` has a save and load function per table, and tests round-trip every contract model through Postgres. Versions at the time: psycopg 3.3.8, Alembic 1.20.1, SQLAlchemy 2.1.8, Postgres 17.
+  - Every table has triggers that reject `UPDATE`, `DELETE`, and `TRUNCATE`. They guard against application code and mistakes, not a privileged operator; separate owner and app roles are a later step. The one exception is `decision_run`: its `route`, `decided_by`, and `escalation_reasons` may be filled in once, from empty, when the agent finishes.
+  - A `txn` table holds transaction identity, because intake returns `txn_id` before normalization runs. Normalized rows are keyed on `(txn_id, normalizer_version)`.
+  - Reruns form one chain per transaction: one `initial` run, and each run replaced at most once. The current decision is the run nothing replaces. One run per snapshot. History is ordered by walking the chain, not by `created_at`.
+  - A correction is a new row, never an edit. Results take a new version, a re-uploaded receipt gets a new `receipt_id`, a late receipt or deadline adds a rerun, and a reviewer's mistake is answered by a later review outcome. Correcting a wrong source row (`raw_transaction`) is not settled here: intake dedup on `(source, external_id)` and `(source_file, source_line_no)` would treat a corrected resubmission as a duplicate. Plan 11 decides how a correction is identified.
+  - `docs/schema.dbml` is generated from the migrated database, and a test fails when it's stale.
+  - Rows only the database uses (`ReceiptFile`, `StoredAgentVerdict`) are models in `src/flag_it/db/rows.py`, not contract records.
+  - No `model_version` table yet. Nothing in this plan reads it, no table links to it, and an append-only table's shape is permanent. A decision run already stores the screener's version and threshold. The plan that trains the screener adds the table, with its link to `decision_run`.
+  - `txn` is its own table, not a `txn_id` column on `raw_transaction`, because intake assigns the ID before the raw row's normalization exists and every later table points at one stable identity row.
+  - Scores are `double precision`, not `real`, so they read back exactly. Receipt line items are a `jsonb` array on the extraction row.
+  - Database tests run against real Postgres: skipped locally without `FLAG_IT_TEST_DATABASE_URL`, failing in CI without it.
+- **Why:** Hand-written SQL keeps one definition of each record (the Pydantic model) plus the table. Triggers make "never edited" hold for every client, not just our code. The rerun keys stop two concurrent reruns from forking the history. A generated diagram can't drift, as the hand-written one had.
+- **Rejected:**
+  - SQLAlchemy Core tables with autogenerate: a second definition of every record.
+  - Numbered SQL files with our own runner: we'd own the version table and have no downgrades.
+  - A separate decision outcome table, so `decision_run` has no exception: more joins for every read of a run.
+  - Finding the current run, or ordering history, by `created_at`: the caller sets it, so it can tie or run backwards.
+  - Editing or deleting a wrong row in place: it defeats the audit trail. Corrections are new rows.
+  - The `category` and MCC lookup tables from the old `schema.dbml`: categories come from the rules YAML, and the lookup belongs to the categorizer (plan 12).
+
 ## 2026-11-10: Details settled while building the contracts package
 
 - **Decided:**

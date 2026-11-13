@@ -1,0 +1,27 @@
+# The laptop's services (see "Containers" in docs/tech-stack.md).
+# Start Postgres: docker compose -f deploy/compose.laptop.yaml up -d --wait postgres
+# Redis, MinIO, the API, workers, and the UI are added by the plans that build them.
+name: flag-it
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: flag_it
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-flag_it}  # local development only
+      POSTGRES_DB: flag_it
+    ports:
+      - "127.0.0.1:${FLAG_IT_PG_PORT:-5432}:5432"  # this machine only: the default password is not for a network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # -h makes this a TCP check. Without it the check can pass on the image's temporary init
+      # server, before flag_it_test exists.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U flag_it -d flag_it"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:
