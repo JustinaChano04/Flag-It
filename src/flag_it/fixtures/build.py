@@ -16,6 +16,8 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 
 from flag_it.contracts.decide import AgentOutput, DecisionRun, Flag, ScreenerResult
 from flag_it.contracts.enums import AgentResult
+from flag_it.contracts.jobs import InvestigateJob, ReadReceiptJob
+from flag_it.contracts.review import ReviewOutcome
 from flag_it.contracts.rules import RuleSet
 from flag_it.contracts.snapshot import CombinedExpense, CombinedExpenseSnapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
@@ -468,3 +470,89 @@ def flags(
                 result = "fail" if v.result is AgentResult.FAIL else "unclear"
                 found.setdefault(name, []).append(flag(name, v.check_id, result, v.evidence, score=v.confidence))
     return {name: tuple(run_flags) for name, run_flags in found.items()}
+
+
+def _pass(check_id: str) -> dict:
+    return {"check_id": check_id, "result": "pass", "confidence": 0.9, "evidence": []}
+
+
+# Agent answers the schema must reject, each with a fragment of the error it raises.
+INVALID_AGENT_OUTPUTS: dict[str, dict] = {
+    "fail_without_policy": {
+        "error": "must include a policy citation",
+        "output": {"verdicts": [{
+            "check_id": "OSU-PRH-09a", "result": "fail", "confidence": 0.9,
+            "evidence": [{"kind": "field", "ref": "transaction.amount", "value": "250.00"}],
+        }]},
+    },
+    "unsure_without_evidence": {
+        "error": "needs at least one citation",
+        "output": {"verdicts": [{"check_id": "OSU-GEN-06a", "result": "unsure", "confidence": 0.5, "evidence": []}]},
+    },
+    "check_twice": {
+        "error": "only once",
+        "output": {"verdicts": [_pass("OSU-GEN-06a"), _pass("OSU-GEN-06a")]},
+    },
+    "unknown_field": {
+        "error": "Extra inputs are not permitted",
+        "output": {"verdicts": [_pass("OSU-GEN-06a") | {"reasoning": "Looks fine."}]},
+    },
+    "confidence_over_one": {
+        "error": "less than or equal to 1",
+        "output": {"verdicts": [_pass("OSU-GEN-06a") | {"confidence": 1.3}]},
+    },
+    "no_verdicts": {
+        "error": "at least 1 item",
+        "output": {"verdicts": []},
+    },
+}
+
+
+def investigate_jobs(runs: dict[str, DecisionRun]) -> dict[str, InvestigateJob]:
+    """One job per run the screener sent to the agent, keyed by run name."""
+    return {
+        name: InvestigateJob(decision_id=run.decision_id, snapshot_id=run.snapshot_id, check_ids=AGENT_CHECKS)
+        for name, run in runs.items()
+        if run.screener is not None and run.screener.sends_to_agent
+    }
+
+
+def read_receipt_jobs() -> dict[str, ReadReceiptJob]:
+    return {name: ReadReceiptJob(receipt_id=r.receipt_id, txn_id=r.txn_id) for name, r in receipts().items()}
+
+
+def review_outcomes(runs: dict[str, DecisionRun], found_flags: dict[str, tuple[Flag, ...]]) -> dict[str, ReviewOutcome]:
+    def review(name: str, run_name: str, final: str, reviewer: str, reason: str, *,
+               disagree: dict[str, str] | None = None, missed: tuple[str, ...] = ()) -> ReviewOutcome:
+        disagree = disagree or {}
+        per_flag = [
+            {"flag_id": f.flag_id, "agree": f.check_id not in disagree, "note": disagree.get(f.check_id)}
+            for f in found_flags.get(run_name, ())
+        ]
+        run = runs[run_name]
+        return ReviewOutcome(
+            review_id=fid("review", name),
+            decision_id=run.decision_id,
+            reviewer=reviewer,
+            final=final,
+            per_flag=per_flag,
+            missed_rule_ids=missed,
+            reason=reason,
+            created_at=run.created_at + timedelta(hours=2),
+        )
+
+    return {
+        "lodging_stay_1_review": review(
+            "lodging_stay_1_review", "lodging_stay_1", "approve", "reviewer.a@example.edu",
+            "Conference hotel stay. Folio to follow."),
+        "lodging_stay_2_review": review(
+            "lodging_stay_2_review", "lodging_stay_2", "flag", "reviewer.b@example.edu",
+            "Folio shows Oklahoma lodging tax; the university is exempt."),
+        "guardrails_unsure_review": review(
+            "guardrails_unsure_review", "guardrails_unsure", "approve", "reviewer.a@example.edu",
+            "Department membership.",
+            disagree={"OSU-GEN-06a": "A professional society, not a student organization."}),
+        "agent_flagged_review": review(
+            "agent_flagged_review", "agent_flagged", "flag", "reviewer.b@example.edu",
+            "Plaques bought as staff service awards.", missed=("OSU-PRH-10",)),
+    }
