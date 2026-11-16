@@ -8,6 +8,19 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-13: Risk screener: an interface and the stand-in; no model table yet
+
+- **Decided:**
+  - `src/flag_it/decide/screener.py` defines the `Screener` interface: a `model_version`, a `threshold`, and `probability(snapshot)`. `screen()` returns the contract's `ScreenerResult` and has no default screener, so callers always name the model they use. `route_after_screening()` gives `auto_approve` decided by the screener below the threshold, and sends the run to the agent at or above it, or whenever the rule checks need review.
+  - The v1 screener is the stand-in: probability 1.0, threshold 0.5, model version `stand-in-1`. Every transaction that passes the rule checks goes to the agent.
+  - A screener's threshold is part of the screener, because it belongs to the model version. There is still no `model_version` table: the plan that trains the screener adds it (2026-11-11) and loads the trained model's threshold from it.
+  - A test keeps the fixtures' stand-in result equal to the real stand-in's.
+  - This corrects the 2026-11-12 entry, which said the fixtures' screener thresholds should move to the rules YAML.
+- **Why:** Callers depend only on the interface, so a trained model replaces the stand-in without changing them. A table that nothing reads would fix an append-only shape before the training plan knows what it needs.
+- **Rejected:**
+  - Adding the `model_version` table now, as the roadmap outline proposed: nothing would read it yet.
+  - A threshold in the rules YAML or app config (already rejected 2026-11-05).
+
 ## 2026-11-12: Shared fixtures are generated, committed, and checked
 
 - **Decided:**
@@ -15,7 +28,7 @@ How to add an entry:
   - `flag_it.fixtures` loads them as validated, read-only models. `flag_it.fixtures.seed.seed(conn)` writes them all to an empty Postgres database through `flag_it.db.records`, so later plans can run against real rows before the pipeline exists. Plan 03 therefore depends on plan 02 as well as plan 01.
   - Decision runs carry the fixed constant `FIXTURE_RULES_VERSION`, not a hash of the rules YAML, so an unrelated rules edit never makes the staleness check fail.
   - Every fixture investigation sends the same two `llm` checks (`OSU-GEN-06a`, `OSU-PRH-09a`). Choosing the real set is plan 21's job.
-  - The screener thresholds (`0.5`, `0.2`) and the low-confidence agent score (`0.42`) are constants in `build.py`, because their `params` don't exist yet. Plan 16 must move them to the rules YAML and rebuild the fixtures; nothing fails if it forgets.
+  - The low-confidence agent score (`0.42`) is a constant in `build.py`, because its `param` doesn't exist yet. Plan 16 must move it to the rules YAML and rebuild the fixtures; nothing fails if it forgets. The screener thresholds (`0.5`, `0.2`) stay in `build.py`: a screener's threshold belongs to its model version, not the rules YAML (corrected 2026-11-13), and a test keeps the stand-in's equal to `flag_it.decide.screener`.
 - **Why:** Hand-written JSON drifts from the contracts and the rules, and every change would be edited by hand in many places. Generated files stay in step, and the check makes drift visible in review.
 - **Rejected:** Hand-written JSON validated by a test. Builder functions only, with no JSON: the review app and non-Python tools can't read them.
 
