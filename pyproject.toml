@@ -31,6 +31,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "flag_it.contracts" = ["schema/*.json"]
 "flag_it.db.migrations" = ["script.py.mako"]
+"flag_it.understand" = ["mcc_to_category.csv", "anomaly.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
