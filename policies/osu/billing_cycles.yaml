@@ -1,0 +1,11 @@
+# Pcard billing cycles and the sign-off cutoff for each, as published by the Pcard accountant.
+#
+# Cycles usually run from the 21st to the 20th, ending on the previous business day when the 20th is a
+# weekend or holiday (Pcard Guidelines p. 15). The sign-off cutoff is set for each cycle (p. 14), so it
+# can't be computed. Rule checks with a deadline (`timing` in osu_rules.yaml) read this file.
+#
+# Add each cycle when its cutoff is published:
+#   - {start: 2026-05-21, end: 2026-06-19, signoff_due: "2026-07-10T23:59:00-05:00"}
+# signoff_due is the moment the cutoff passes, with its UTC offset. A check whose deadline falls in a
+# cycle not listed here reports not_evaluated.
+cycles: []

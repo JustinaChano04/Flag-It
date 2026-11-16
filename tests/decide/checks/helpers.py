@@ -1,6 +1,6 @@
 """Builders for rule-check tests: a receipt, a check context, and a snapshot, from the shared fixtures."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -9,8 +9,15 @@ from flag_it.contracts.rules import RuleSet
 from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.contracts.understand import ReceiptExtraction
 from flag_it.decide.checks.base import CheckContext
+from flag_it.decide.checks.calendar import BillingCalendar
 
 BASE = "cat_office_general_supplies"  # an office-supplies charge of 47.25 with no receipt
+SIGNOFF = datetime(2025, 4, 10, 23, 59, tzinfo=timezone.utc)  # the fixtures' sign-off cutoff
+
+# The billing cycle every fixture transaction posts in.
+FIXTURE_CALENDAR = BillingCalendar.model_validate(
+    {"cycles": [{"start": "2025-02-21", "end": "2025-03-20", "signoff_due": SIGNOFF}]}
+)
 
 
 def line(description: str | None, amount: str | None = None, line_type: str = "item") -> dict:
