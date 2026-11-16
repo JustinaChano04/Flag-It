@@ -19,7 +19,7 @@ Rules and checks are documented in `policies/README.md`, not here.
 We test on public Oklahoma p-card transactions. They are real, but they are missing several things the checks need.
 
 - **Notebook:** `data_exploration/ok_pcard_exploration.ipynb`
-- **MCC lookup:** `data_exploration/mcc_to_category.csv`
+- **MCC lookup:** `src/flag_it/understand/mcc_to_category.csv` is the copy the categorizer reads. `data_exploration/mcc_to_category.csv` is the notebooks' working copy. Copy changes across by hand; the lookup version changes with the file.
 - **Fields:** see [Raw transaction](contracts.md#raw-transaction).
 
 What the data does not have:

@@ -8,6 +8,22 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-12: Categorizer is the MCC lookup for now; anomaly baseline settings
+
+- **Decided:**
+  - Plan 12 builds only the lookup categorizer. The trained categorizer gets its own plan once labeled categories exist.
+  - The lookup key ignores case, spacing, and punctuation, so "EATING PLACES, RESTAURANTS" and the export's "EATING PLACES  RESTAURANTS" match. It matched every OSU row of the January 2025 export.
+  - Lookup confidence labels map to `high` 0.9, `medium` 0.7, `low` 0.5, `unmapped` 0.0. An MCC not in the file is `other_unclear` with 0.0. The lookup version is `lookup-` plus the first 12 characters of the file's SHA-256 hash.
+  - The anomaly baseline uses the cardholder's purchases (amount > 0) dated before the transaction date, taking each transaction's newest normalized row. `min_history` is 10 and the MAD floor is $1.00, in `src/flag_it/understand/anomaly.yaml`, versioned `robust-z-1`. The score threshold is not a setting here: the screener and the agent read the score.
+  - `understand()` returns a result already saved for the same version instead of computing it again. If a concurrent run saves the same result first, that one is kept and returned. An MCC the lookup doesn't know is logged, so it gets added.
+  - Known gaps, from the 2026-11-16 plan review: results are keyed on `(txn_id, version)` without the normalizer version, so after a normalizer change `understand()` would return the old category and score; this must be fixed (fold the normalizer version into the result version, or a contract change) before the first `NORMALIZER_VERSION` bump. `anomaly.yaml`'s version is bumped by hand, unlike the lookup's hash. A score reflects the history known when it was computed (`history_length` shows how much).
+- **Why:** A model trained on the lookup's own labels would only learn the lookup's mistakes. A hash version can't drift from the file. Refunds would pull the median down and make normal purchases look unusual. Reusing saved results keeps the stage safe to retry with append-only tables.
+- **Rejected:**
+  - Training LightGBM on high-confidence lookup rows as weak labels.
+  - Failing on an unknown MCC: one new MCC would stop the pipeline.
+  - A hand-written lookup version string: it can drift from the file's content.
+  - Including refunds in the anomaly history.
+
 ## 2026-11-12: Shared fixtures are generated, committed, and checked
 
 - **Decided:**
