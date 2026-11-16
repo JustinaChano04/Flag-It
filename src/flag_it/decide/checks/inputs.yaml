@@ -1,0 +1,4 @@
+# Inputs this deployment has. A rule check that needs any other input is skipped and produces no flag.
+# Add an input here once its data is wired in, and its checks switch on with no change to the rules.
+# Values: transaction, receipt, table:<name>, records:<system>. See policies/README.md.
+inputs: [transaction, receipt]

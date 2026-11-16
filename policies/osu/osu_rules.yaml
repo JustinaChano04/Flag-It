@@ -18,7 +18,10 @@
 #               documentation - allowed, but specific documents/approvals must exist
 #               guidance      - a "should", not a hard rule (checks only flag)
 #   applies_to  Expense categories the rule is routed to (ids below), or [all].
-#   params      Values checks read instead of hard-coding numbers.
+#   params      Values checks read instead of hard-coding them: limits and tolerances, and word lists
+#               for line_item checks: <name>_terms (certain evidence: the check fails),
+#               <name>_review_terms (ambiguous: the run is looked at) and <name>_except_terms
+#               (phrases that cancel a match on that line).
 #   hints       Candidate signals in the public OK p-card data. OUR heuristics, not policy.
 #   notes       Caveats, cross-references.
 #   checks      The evaluation units (below).
@@ -326,6 +329,8 @@ rules:
     source: {section: "Reconciliation and Receipt Requirements - Receipt Requirements", page: 15}
     severity: documentation
     applies_to: [all]
+    params:
+      total_tolerance: 0.50
     checks:
       - id: OSU-GEN-04a
         ask: An itemized receipt exists with date, merchant, line items, line prices and total
@@ -336,6 +341,12 @@ rules:
         timing: {due: cycle_signoff}
       - id: OSU-GEN-04b
         ask: Receipt total equals the charged amount
+        pattern: cross_reference
+        method: code
+        requires: [transaction, receipt]
+        scope: transaction
+      - id: OSU-GEN-04c
+        ask: The receipt belongs to the charge (merchant, date and total within the receipt matching tolerances)
         pattern: cross_reference
         method: code
         requires: [transaction, receipt]
@@ -491,6 +502,9 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix A - Alcohol", page: "19, 23"}
     severity: prohibited
     applies_to: [all]
+    params:
+      alcohol_line_terms: [alcohol, alcoholic, beer, wine, liquor, spirits, cocktail, bar set up, bar setup, bartender, bartending]
+      alcohol_line_except_terms: [non alcoholic, root beer, ginger beer, wine vinegar]
     hints: >-
       MCC 'PACKAGE STORES  BEER  LIQUOR' or 'DRINKING PLACES (ALCOHOLIC BEV.)-BARS...' (72 OSU rows
       FY2024-25). Alcohol on restaurant or hotel receipts needs the receipt (llm).
@@ -734,6 +748,9 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix A - Insurance; Appendix B - Car Rental", page: "19, 25, 32"}
     severity: prohibited
     applies_to: [services_shipping_fees, ground_transportation]
+    params:
+      insurance_line_terms: [insurance, coverage, protection, waiver, LDW, CDW, LIS, SLI, PAI, PEC]
+      physical_damage_terms: [physical damage, damage waiver, collision damage, loss damage, LDW, CDW]
     hints: MCC 'INSURANCE-SALES & UNDERWRITING' / 'DIRECT MARKETING INSURANCE SERVICES' (98 OSU rows FY2024-25).
     checks:
       - id: OSU-PRH-12a
@@ -784,6 +801,10 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix A", page: "19, 25"}
     severity: prohibited
     applies_to: [all]
+    params:
+      penalty_line_terms: [late fee, late charge, late payment, finance charge, interest charge, penalty fee]
+      penalty_line_review_terms: [interest, penalty]
+      penalty_line_except_terms: [interest group, special interest]
     hints: Item text such as LATE FEE, FINANCE CHARGE, PENALTY (no OSU matches FY2024-25).
     checks:
       - id: OSU-PRH-14a
@@ -899,6 +920,8 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix A - Postage Stamps", page: "19, 26"}
     severity: prohibited
     applies_to: [services_shipping_fees]
+    params:
+      postage_line_terms: [postage stamp, postage stamps, forever stamp, forever stamps, book of stamps, stamp booklet, usps stamps]
     hints: MCC 'POSTAGE STAMPS' (48 OSU rows FY2024-25).
     checks:
       - id: OSU-PRH-19a
@@ -973,6 +996,8 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix A - Trade-ins", page: "19, 28"}
     severity: prohibited
     applies_to: [equipment_tools]
+    params:
+      trade_in_line_terms: [trade in, tradein, trade in credit]
     checks:
       - id: OSU-PRH-22a
         ask: No trade-in credit line
@@ -1089,7 +1114,9 @@ rules:
     source: {section: "Appendix A - Credit Card Processing Fees", page: 24}
     severity: conditional
     applies_to: [all]
-    params: {max_fee_pct: 4}
+    params:
+      max_fee_pct: 4
+      fee_line_terms: [processing fee, convenience fee, card fee, credit card fee, surcharge]
     checks:
       - id: OSU-RST-04a
         ask: Processing or convenience fee is at most max_fee_pct of the subtotal
@@ -1475,6 +1502,9 @@ rules:
     source: {section: "Appendix B - Airfare and Baggage Fees", page: 29}
     severity: prohibited
     applies_to: [airfare_baggage]
+    params:
+      premium_fare_terms: [first class, business class, premium economy, upgrade, upgraded, early bird, earlybird, priority boarding, extra bag, extra baggage, overweight bag, overweight baggage]
+      premium_fare_review_terms: [priority, overweight]
     hints: >-
       Merchant 'DELTA AIR   UPGRADE' (4 OSU rows). Small airline charges (MCC 'AIRLINES  AIR CARRIERS',
       median ~$5) are mostly fees and could include upgrades; needs the receipt.
@@ -1561,6 +1591,9 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix B - Lodging", page: "19, 30"}
     severity: prohibited
     applies_to: [lodging]
+    params:
+      personal_folio_terms: [room service, minibar, mini bar, laundry, dry cleaning, valet cleaning, pet fee, in room movie, movie rental, spa]
+      personal_folio_review_terms: [food, beverage, drinks, restaurant, bar, safe, pet, movie]
     checks:
       - id: OSU-TRV-08a
         ask: Folio has no personal lines (food, drinks, laundry, safe, pet fees)
@@ -1578,6 +1611,11 @@ rules:
     source: {section: "Appendix B - Lodging, Combined Receipts", page: 30}
     severity: prohibited
     applies_to: [lodging, registrations_memberships]
+    params:
+      registration_terms: [registration, conference fee, symposium fee]
+      lodging_terms: [lodging, accommodation, room night, room nights, room rate, hotel room, hotel stay]
+      lodging_review_terms: [room, hotel, night, nights]
+      lodging_except_terms: [meeting room, conference room, breakout room]
     checks:
       - id: OSU-TRV-09a
         ask: No single charge contains both registration and lodging lines
@@ -1778,6 +1816,9 @@ rules:
     source: {section: "Prohibited Goods and Services; Appendix B - Car Rental, Parking Expenses", page: "19, 32, 33"}
     severity: conditional
     applies_to: [parking_tolls]
+    params:
+      ticket_line_terms: [parking ticket, traffic ticket, parking citation, traffic citation, parking fine, parking violation]
+      ticket_line_review_terms: [citation, violation, fine]
     hints: MCC 'AUTOMOBILE PARKING LOTS AND GARAGES' (528 OSU rows); OSU-campus parking would appear as an OSU
       merchant.
     checks:
