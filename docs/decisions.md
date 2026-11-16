@@ -8,6 +8,29 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-16: Rule checks: only certain evidence fails; deployed inputs; word lists in the rules YAML; a billing calendar
+
+- **Decided:**
+  - `run_rule_checks` runs every applicable `code` check on a snapshot and returns flags. A check that needs an input the deployment doesn't have (listed in `src/flag_it/decide/checks/inputs.yaml`, today `transaction` and `receipt`) is skipped with no flag. A deployed input missing for one transaction gives `not_evaluated`. For a `document_presence` check, the missing document is itself the finding: `pending` before its deadline, `fail` after.
+  - **Only certain evidence fails a check.** Certain evidence is `fail` (a hard failure for any severity except guidance). Suggestive evidence is `unclear`: never a hard failure, but `needs_review` is set and the run can't be auto-approved. A blank receipt field is `not_evaluated`, because the reader may have missed it.
+  - Line-item checks read three word lists from the rule's `params`: `<name>_terms` (certain), `<name>_review_terms` (ambiguous), and `<name>_except_terms` (phrases that cancel a match). Matching is on whole words, ignoring case and punctuation. Lodging lines are recognized by `line_type: room` before any word. Every list has tests for innocent lines that share its words ("Special Interest Group dues", "Meeting room rental"). The lists are drafted from the rule text and need the same human review as the rest of the YAML.
+  - The receipt total may differ from the charge by `total_tolerance` (0.50, the same as receipt matching); a tip on the receipt may explain the rest; a charge higher than a receipt with no tip is `unclear` (a tip may have been added after printing). Percentages are compared exactly.
+  - New check `OSU-GEN-04c` reports a receipt whose `match_status` is `mismatch` as `unclear`, as contracts.md's "a mismatch is a finding" requires. Other checks don't read a mismatched receipt's lines, since it may not be this charge's receipt. The receipt-total check (`OSU-GEN-04b`) still compares the two, but on a mismatched receipt it only ever needs review, so a receipt that may belong to another charge never causes a hard failure. Plan 13's matcher counts a tip read on the receipt, so ordinary tipped meals match.
+  - 15 checks are implemented. 13 more can't be decided from today's inputs and report `not_evaluated` with the reason, listed in `registry.py`: 12 need receipt facts the extraction doesn't hold (merchant or rental location, delivery dates, service terms, prepayment), and `OSU-SPL-01a` needs the cardholder's other charges. A test keeps the two lists covering every deployable check.
+  - A checker that raises gives `not_evaluated` ("checker error") and is logged; the other checks still run.
+  - Billing cycles and sign-off cutoffs come from `policies/osu/billing_cycles.yaml`, because the Pcard accountant sets each cutoff (Pcard Guidelines p. 14-15). A transaction belongs to the cycle containing its post date. A deadline in a cycle the file doesn't list gives `not_evaluated`. The file ships empty until real cutoffs are added.
+  - "Now" is the snapshot's `created_at`, and a flag's ID is `uuid5(decision_id, check_id)`, so running one snapshot for one run twice gives the same flags.
+  - **Later, in order:** (1) the receipt reader tags each line's kind (`alcohol`, `penalty`, ...) from a fixed list, a contract change made with plan 13's bake-off; a reader tag that agrees with the words is certain, and one that disagrees needs review. (2) The agent judges `unclear` lines with the line cited (plan 16). (3) Once reviews exist (plan 17), a labeled set of receipt lines gates every check that can hard-fail on precision in CI, and words that reviewers keep overruling move from `_terms` to `_review_terms`.
+- **Why:** A hard failure skips the screener and the agent, so a wrong one flags an innocent purchase with no second look. Words are ambiguous ("interest", "room"), so a word alone may only send a run to be looked at, and certain words are kept separate. Flagging every input the deployment never has would add 17 to 22 `not_evaluated` flags to each transaction, and reviewers would learn to ignore them. Word lists and tolerances are policy content like limits, so they belong next to their rule, and a new policy stays mostly YAML. A fixed sign-off offset would encode a date the guidelines don't set.
+- **Rejected:**
+  - Every word match as a hard failure (the first draft of this plan; plan review found "Special Interest Group dues" and "Meeting room rental" flagged outright).
+  - Every word match only as a review: clear violations ("bartending", "late fee") would cost an agent call each.
+  - A `not_evaluated` flag for every missing input, deployed or not.
+  - Word lists in a config file next to the code: it splits one rule's meaning across two files.
+  - A sign-off date computed as a fixed number of days after the cycle ends.
+  - One generic checker per pattern: the YAML's `ask` is prose, not a machine-readable condition.
+  - Adding location, delivery date, term, and prepayment fields to the receipt extraction now: a contract change, and a change to plan 13's reader before its bake-off.
+
 ## 2026-11-12: Shared fixtures are generated, committed, and checked
 
 - **Decided:**

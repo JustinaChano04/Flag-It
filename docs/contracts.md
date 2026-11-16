@@ -100,6 +100,10 @@ The snapshot holds the combined expense as one JSON value, not split into column
 
 Every `code` check that applies to the transaction's category runs. Each failure becomes a flag. If any failure is a hard failure (a broken rule that isn't just guidance; see [Terms](#terms-used-on-this-page)), the run ends with route `flag`. The risk screener and the agent are skipped.
 
+Which checks run depends on what the deployment has. A check that needs an input the deployment doesn't have at all (a reference table or university system not yet connected) is skipped and produces no flag; it switches on when the input is added. An input the deployment has but this transaction lacks, such as a receipt that hasn't arrived, gives `not_evaluated` naming it. A field the receipt reader left blank never fails a check: it also gives `not_evaluated`, because the receipt may show it.
+
+Only certain evidence fails a code check. Evidence that suggests a problem but isn't certain, such as an ambiguous word on a receipt line, gives `unclear`. That is never a hard failure, but the run can't be auto-approved: the agent or a person looks at it.
+
 **Why run all checks instead of stopping at the first failure:** the reviewer sees every reason at once, and the labels are more complete. Code checks cost almost nothing.
 
 ### 6. The risk screener decides what the agent sees
@@ -309,7 +313,7 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 |---|---|
 | `receipt_id`, `reader_model` | Key. `receipt_id` is the uploaded file (returned by the upload endpoint and carried by the `read_receipt` job). `reader_model` is the exact model tag and quantization. |
 | `txn_id` | The transaction the receipt was uploaded against. |
-| `match_status` | `matched`, `mismatch` (merchant, date, or total is outside its tolerance), or `unmatched` (the reader couldn't read enough fields to compare). A mismatch is a finding. In v1 every receipt is uploaded against a known transaction, so matching only verifies; it never searches for the transaction. Tolerances are in a config file. |
+| `match_status` | `matched`, `mismatch` (merchant, date, or total is outside its tolerance), or `unmatched` (the reader couldn't read enough fields to compare). A mismatch is a finding. Check `OSU-GEN-04c` reports it as `unclear`, and checks that read the receipt's lines don't judge a mismatched receipt. In v1 every receipt is uploaded against a known transaction, so matching only verifies; it never searches for the transaction. Tolerances are in a config file. |
 | `merchant`, `receipt_date`, `subtotal`, `tax`, `tip`, `total` | Empty when unreadable. An empty value is better than a confident wrong one. |
 | `line_items` | A list of `{description, quantity, unit_price, amount, line_type}`. The only source for tax, tip, room rate, and seat class. |
 
@@ -369,7 +373,7 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 | `flag_id` | Key. |
 | `decision_id`, `txn_id` | The run that produced it. |
 | `rule_id`, `check_id` | Stable IDs from the rules YAML, such as `OSU-TRV-13` and `OSU-TRV-13a`. |
-| `result` | `fail`, `violation`, `unclear`, `pending`, or `not_evaluated`. A missing input is `not_evaluated`, with the missing input named in `evidence`. |
+| `result` | `fail`, `violation`, `unclear`, `pending`, or `not_evaluated`. A missing input is `not_evaluated`, with the missing input named in `evidence`. An input the deployment doesn't have at all produces no flag (see step 5). |
 | `severity` | Copied from the rule. |
 | `evidence` | A list of citations (below). |
 | `score` | Confidence from 0 to 1. |
