@@ -8,6 +8,26 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-12: Receipts: upload, reader behind a setting, and matching tolerances
+
+- **Decided:**
+  - Plan 13 owns the receipt upload endpoint, the storage interface (`ReceiptStore`: MinIO in production, a local folder in tests), and the MinIO Compose service.
+  - The reader model is a setting (`FLAG_IT_READER_MODEL`, default `qwen3-vl:8b-q4_K_M`) until the bake-off picks one. Ollama is called with thinking off, temperature 0, and the output forced to an all-text schema. Text the code can't parse is saved empty. Unreadable output after one retry is a blank reading with `match_status: unmatched`.
+  - PDFs are sent as PNG images of their first 3 pages.
+  - Matching: `unmatched` when the total is unreadable, or both the date and the merchant are. Otherwise `mismatch` when a readable field is outside its tolerance: total within $0.50 of the charge (by absolute value, so refunds compare), or total plus a tip read on the receipt within $0.50, date within 3 days, merchant similarity at least 0.6 after cleaning (1.0 when one name contains the other).
+  - A repeated `read_receipt` job for a receipt the same reader model already read returns the saved extraction without reading again, so plan 21 can still start the late-receipt rerun after a crash. Jobs are queued with the ID `read_receipt:<receipt_id>`, and a duplicate running at the same time keeps the first saved extraction.
+  - A job seen before its upload commits raises `ReceiptNotReady`, a subclass of Arq's `Retry`, so Arq runs it again 5 seconds later. Arq 0.28 retries nothing else: any other exception fails the job for good.
+  - Uploads accept PDF, JPEG, and PNG up to 10 MB, and the file's first bytes must match its declared type. A file that still can't be decoded, or an image over 25 million pixels, is saved as a blank `unmatched` reading with the reason logged; huge PDF pages are rendered smaller. Unreadable model output is logged before it is discarded.
+  - `match_status` is saved with the reading and is not recomputed when `matching.yaml` changes; the row doesn't record which tolerances produced it. This is acceptable while the tolerances are untuned. Before they are tuned after the bake-off, a contract change adds the matcher's version to `receipt_extraction`, so old and new results can be told apart and re-matched.
+  - Later, with the bake-off: the reader also tags each line's kind (`alcohol`, `penalty`, `postage`, ...) from a fixed list taken from the rules, so plan 14's line checks have stronger evidence than words (see the 2026-11-16 rule-checks decision). It is a contract change.
+- **Why:** The bake-off needs labeled receipts that don't exist yet, and a setting lets it choose without a code change. An all-text schema keeps a misread amount from arriving as a float. Tolerances in a file make matching reproducible and easy to tune after the bake-off.
+- **Rejected:**
+  - Running the bake-off before building the worker: it would block the receipt track on collecting receipts.
+  - Asking the model for numbers: floats are refused as money, and a guessed number looks as confident as a read one.
+  - Committing the upload before queueing the job: tests would leave committed rows behind; the retry handles the race instead.
+  - Raising a plain exception for "not ready" and leaving the retry to plan 21's wrapper: until that wrapper exists, receipts would silently never be read.
+  - Trusting the declared content type: the bytes go to a PDF parser written in C.
+
 ## 2026-11-12: Intake normalizes in the request; receipt upload belongs to plan 13
 
 - **Decided:**
