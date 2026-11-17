@@ -1,0 +1,5 @@
+# Settings for the robust z-score anomaly baseline. See "Anomaly detector" in docs/tech-stack.md.
+# Bump `version` whenever a setting changes: every anomaly result records it.
+version: robust-z-1
+min_history: 10     # fewer earlier purchases than this -> insufficient_history, never a score of 0
+mad_floor: "1.00"   # dollars; stops constant spending from dividing by zero

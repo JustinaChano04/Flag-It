@@ -39,6 +39,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 "flag_it.contracts" = ["schema/*.json"]
 "flag_it.db.migrations" = ["script.py.mako"]
+"flag_it.understand" = ["mcc_to_category.csv", "anomaly.yaml"]
 "flag_it.understand.receipts" = ["matching.yaml"]
 
 [tool.pytest.ini_options]
