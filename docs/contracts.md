@@ -74,6 +74,8 @@ A client sends one transaction or a batch to the intake API. Each transaction ca
 
 Normalization turns the raw text into typed fields: real dates, a decimal amount, a cardholder key, and a cleaned merchant name. The raw row is kept unchanged, so flags can quote the original text.
 
+Normalization runs inside the intake request, because it is pure and takes microseconds, and because a value it can't read (an amount that isn't a number) must be reported to the client as `invalid`. The request still answers `202`: the decision comes later. An item that can't be normalized is not stored and gets no `txn_id`. Rows loaded from the state's export files are the exception: every file row is kept as a raw row, and only rows that normalize get a `txn_id`.
+
 ### 3. The Understand stages add what they learn
 
 Three stages each write one result row, keyed on `txn_id` plus the version of the model that produced it:
@@ -469,6 +471,8 @@ All endpoints are FastAPI. Requests and responses are JSON.
 | `GET /transactions/{txn_id}/decisions` | Get every decision run for the transaction, newest first. | `200` |
 
 A transaction is identified by `(source, external_id)`. Sending the same pair again returns `duplicate` with the existing `txn_id`.
+
+`POST /transactions` also answers `202` for an invalid item, with the item's errors, so one item and a batch of one behave the same. `GET /transactions/{txn_id}` shows the newest run that has a route: a run the agent is still working on is not shown as the decision until it has one.
 
 Batch response:
 

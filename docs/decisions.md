@@ -23,6 +23,42 @@ How to add an entry:
   - Failing on an unknown MCC: one new MCC would stop the pipeline.
   - A hand-written lookup version string: it can drift from the file's content.
   - Including refunds in the anomaly history.
+## 2026-11-12: Receipts: upload, reader behind a setting, and matching tolerances
+
+- **Decided:**
+  - Plan 13 owns the receipt upload endpoint, the storage interface (`ReceiptStore`: MinIO in production, a local folder in tests), and the MinIO Compose service.
+  - The reader model is a setting (`FLAG_IT_READER_MODEL`, default `qwen3-vl:8b-q4_K_M`) until the bake-off picks one. Ollama is called with thinking off, temperature 0, and the output forced to an all-text schema. Text the code can't parse is saved empty. Unreadable output after one retry is a blank reading with `match_status: unmatched`.
+  - PDFs are sent as PNG images of their first 3 pages.
+  - Matching: `unmatched` when the total is unreadable, or both the date and the merchant are. Otherwise `mismatch` when a readable field is outside its tolerance: total within $0.50 of the charge (by absolute value, so refunds compare), or total plus a tip read on the receipt within $0.50, date within 3 days, merchant similarity at least 0.6 after cleaning (1.0 when one name contains the other).
+  - A repeated `read_receipt` job for a receipt the same reader model already read returns the saved extraction without reading again, so plan 21 can still start the late-receipt rerun after a crash. Jobs are queued with the ID `read_receipt:<receipt_id>`, and a duplicate running at the same time keeps the first saved extraction.
+  - A job seen before its upload commits raises `ReceiptNotReady`, a subclass of Arq's `Retry`, so Arq runs it again 5 seconds later. Arq 0.28 retries nothing else: any other exception fails the job for good.
+  - Uploads accept PDF, JPEG, and PNG up to 10 MB, and the file's first bytes must match its declared type. A file that still can't be decoded, or an image over 25 million pixels, is saved as a blank `unmatched` reading with the reason logged; huge PDF pages are rendered smaller. Unreadable model output is logged before it is discarded.
+  - `match_status` is saved with the reading and is not recomputed when `matching.yaml` changes; the row doesn't record which tolerances produced it. This is acceptable while the tolerances are untuned. Before they are tuned after the bake-off, a contract change adds the matcher's version to `receipt_extraction`, so old and new results can be told apart and re-matched.
+  - Later, with the bake-off: the reader also tags each line's kind (`alcohol`, `penalty`, `postage`, ...) from a fixed list taken from the rules, so plan 14's line checks have stronger evidence than words (see the 2026-11-16 rule-checks decision). It is a contract change.
+- **Why:** The bake-off needs labeled receipts that don't exist yet, and a setting lets it choose without a code change. An all-text schema keeps a misread amount from arriving as a float. Tolerances in a file make matching reproducible and easy to tune after the bake-off.
+- **Rejected:**
+  - Running the bake-off before building the worker: it would block the receipt track on collecting receipts.
+  - Asking the model for numbers: floats are refused as money, and a guessed number looks as confident as a read one.
+  - Committing the upload before queueing the job: tests would leave committed rows behind; the retry handles the race instead.
+  - Raising a plain exception for "not ready" and leaving the retry to plan 21's wrapper: until that wrapper exists, receipts would silently never be read.
+  - Trusting the declared content type: the bytes go to a PDF parser written in C.
+
+## 2026-11-12: Intake normalizes in the request; receipt upload belongs to plan 13
+
+- **Decided:**
+  - Intake validates and normalizes each item inside the request, then saves the raw row, `txn`, and the normalized row in one savepoint. It still answers `202`. An invalid item stores nothing. FastAPI 0.163.1.
+  - `normalize` is a pure function with `NORMALIZER_VERSION`. Merchant cleanup and the cardholder key are ported from the exploration notebook. A last name with no letters is invalid, not merged into a shared key. An amount with fractions of a cent is invalid, not rounded. Dates are `dd-MON-yy` (the export) or ISO (API clients).
+  - A concurrent submit of the same `(source, external_id)` ends as `duplicate`: the losing insert's unique violation is caught and the item is looked up again.
+  - An amount must be a plain decimal: exponents, NaN, Infinity, and currency signs are invalid. A missing field is reported as "required". Invalid items and lost races are logged.
+  - Known gaps, from the 2026-11-16 plan review: a corrected resubmission with the same `(source, external_id)` is a `duplicate`, so correcting a source row isn't supported; it needs a correction marker in the intake API (a contract change), deferred until real corrections appear. File rows are deduplicated by file name and line number only, so the same export saved under two names loads twice (`data/raw/ok_pcard_2025-01.csv` and `data/raw/fy2025/pcard_public_202501.csv` are identical), and a charge sent through the API and loaded from a file becomes two transactions. Load each month once, from `data/raw/fy*/`. The loader loads every agency in the export; which agencies are reviewed is plan 21's decision.
+  - The monthly export loader keeps every file row as a raw row and gives a `txn_id` only to rows that normalize. File rows are identified by `(file name, line number)`.
+  - The API app is `src/flag_it/api.py`, which only mounts each stage's router. `get_conn` in `src/flag_it/deps.py` gives each request one connection that commits on success.
+  - The receipt upload endpoint and receipt storage belong to plan 13, with the rest of the receipt work.
+- **Why:** Normalizing in the request is the only way to report unreadable values as `invalid`, and it is too fast to need a queue. One savepoint per item keeps the batch rule (one bad item never rejects the others). Keeping unreadable file rows raw means a fixed normalizer can process them later without reloading files.
+- **Rejected:**
+  - Normalizing in the background: the client couldn't be told an amount is unreadable.
+  - Rounding sub-cent amounts: silently changes money.
+  - Giving a `txn_id` to file rows that can't be normalized: every later stage would have to handle a transaction with no normalized row.
 
 ## 2026-11-12: Shared fixtures are generated, committed, and checked
 
@@ -40,9 +76,9 @@ How to add an entry:
 - **Decided:**
   - Migrations are Alembic revisions of hand-written SQL. Code talks to Postgres through psycopg 3 (sync API), with no ORM. `src/flag_it/db/records.py` has a save and load function per table, and tests round-trip every contract model through Postgres. Versions at the time: psycopg 3.3.8, Alembic 1.20.1, SQLAlchemy 2.1.8, Postgres 17.
   - Every table has triggers that reject `UPDATE`, `DELETE`, and `TRUNCATE`. They guard against application code and mistakes, not a privileged operator; separate owner and app roles are a later step. The one exception is `decision_run`: its `route`, `decided_by`, and `escalation_reasons` may be filled in once, from empty, when the agent finishes.
-  - A `txn` table holds transaction identity, because intake returns `txn_id` before normalization runs. Normalized rows are keyed on `(txn_id, normalizer_version)`.
+  - A `txn` table holds transaction identity, because intake returns `txn_id` before normalization runs. Normalized rows are keyed on `(txn_id, normalizer_version)`. (Changed 2026-11-12: intake now normalizes in the request. The `txn` table still separates identity from normalized rows, and file rows that can't be normalized stay raw with no `txn_id`.)
   - Reruns form one chain per transaction: one `initial` run, and each run replaced at most once. The current decision is the run nothing replaces. One run per snapshot. History is ordered by walking the chain, not by `created_at`.
-  - A correction is a new row, never an edit. Results take a new version, a re-uploaded receipt gets a new `receipt_id`, a late receipt or deadline adds a rerun, and a reviewer's mistake is answered by a later review outcome. Correcting a wrong source row (`raw_transaction`) is not settled here: intake dedup on `(source, external_id)` and `(source_file, source_line_no)` would treat a corrected resubmission as a duplicate. Plan 11 decides how a correction is identified.
+  - A correction is a new row, never an edit. Results take a new version, a re-uploaded receipt gets a new `receipt_id`, a late receipt or deadline adds a rerun, and a reviewer's mistake is answered by a later review outcome. Correcting a wrong source row (`raw_transaction`) is not settled here: intake dedup on `(source, external_id)` and `(source_file, source_line_no)` would treat a corrected resubmission as a duplicate. Plan 11 deferred it: a corrected resubmission is a duplicate until the intake API gets a correction marker (see 2026-11-12).
   - `docs/schema.dbml` is generated from the migrated database, and a test fails when it's stale.
   - Rows only the database uses (`ReceiptFile`, `StoredAgentVerdict`) are models in `src/flag_it/db/rows.py`, not contract records.
   - No `model_version` table yet. Nothing in this plan reads it, no table links to it, and an append-only table's shape is permanent. A decision run already stores the screener's version and threshold. The plan that trains the screener adds the table, with its link to `decision_run`.
