@@ -41,6 +41,7 @@ where = ["src"]
 "flag_it.db.migrations" = ["script.py.mako"]
 "flag_it.understand" = ["mcc_to_category.csv", "anomaly.yaml"]
 "flag_it.understand.receipts" = ["matching.yaml"]
+"flag_it.decide.checks" = ["inputs.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

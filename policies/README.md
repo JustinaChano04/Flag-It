@@ -11,6 +11,7 @@ policies/
     ├── source/Pcard-Guidelines-2026.05.pdf   # source of truth
     ├── osu_rules.yaml           # rules and their checks (for the engine, routing, citations)
     ├── osu_policy.md            # condensed policy for the LLM judge, tagged with rule and check IDs
+    ├── billing_cycles.yaml      # billing cycles and sign-off cutoffs, for checks with a deadline
     └── rule_breakdown.png       # chart of checks by input, pattern and category
 ```
 
@@ -48,11 +49,11 @@ Rule-level facets: `topic` (`limits`, `vendor`, `process`, `items`, `travel`) fo
 
 **Gates and dependencies.** Some conditions only matter after another one. An airfare upgrade is fine with a documented medical reason, so "receipt shows an upgrade" (OSU-TRV-04a) is a *gate*, and "a documented reason is on file" (OSU-TRV-04b) runs only when the gate is true. The same pattern covers gift cards (OSU-PRH-10a detects them, then the OSU-RST-06 checks run), split purchases (candidate groups, then the judge), food approval and resale permits. Gates keep the engine from reporting a condition that is fine in context.
 
-**Deadlines.** Documents and approvals are attached during reconciliation, the asset report is due within 24 hours, and cycle totals aren't final until the cycle ends. Checks with `timing` report *pending* until their deadline, so a missing receipt on day one isn't a violation.
+**Deadlines.** Documents and approvals are attached during reconciliation, the asset report is due within 24 hours, and cycle totals aren't final until the cycle ends. Checks with `timing` report *pending* until their deadline, so a missing receipt on day one isn't a violation. Deadlines in a billing cycle come from `osu/billing_cycles.yaml`, because the Pcard accountant sets each cycle's sign-off cutoff.
 
-**Patterns map to checkers.** The engine needs one implementation per pattern (seven in total), not one per rule. A new policy is mostly YAML.
+**Checks map to checkers.** Each `code` check has a checker in `src/flag_it/decide/checks/`, registered by check ID in `registry.py`. Checks of one pattern share code: every `line_item` check is the same function reading different word lists from `params`: `<name>_terms` are certain evidence and fail the check, `<name>_review_terms` are ambiguous and only send the run to be looked at, and `<name>_except_terms` cancel a match ("special interest" cancels "interest"). So a new policy is mostly YAML: its limits and word lists reuse the existing checkers.
 
-**Inputs gate checks.** If any `requires` input is missing, the check reports *not evaluated: missing \<input\>* instead of pass or fail. A deployment lists the inputs it has, and checks switch on as inputs are added, with no change to the rules. The input kinds:
+**Inputs gate checks.** A deployment lists the inputs it has in `src/flag_it/decide/checks/inputs.yaml`. A check that needs an input the deployment doesn't have is skipped and reports nothing; it switches on when the input is added, with no change to the rules. If a deployed input is missing for one transaction (no receipt yet), the check reports *not evaluated: missing \<input\>* instead of pass or fail. The input kinds:
 
 - `table:<name>`: a maintained reference table, such as MCC lists, the OSU-department merchant list, GSA lodging rates, or campus addresses. Kept by a separate process and versioned.
 - `records:<system>`: OSU system records. `works` holds card, fund, description and trip number; `hr` holds employee type; `airs` holds travel requests; the others are `asset_mgmt`, `coi` (conflict-of-interest disclosures), `approvals` and `accounts_payable`. These are integrations, and some are time-dependent (an asset report is due within 24 hours).
@@ -68,7 +69,7 @@ The LLM judge reads `osu_policy.md`. Its section 6, the list of checks the judge
 
 ![OSU rule breakdown](osu/rule_breakdown.png)
 
-74 rules, 99 checks: 70 code (6 of them gates), 29 LLM.
+74 rules, 100 checks: 71 code (6 of them gates), 29 LLM.
 
 **Checks that can run as inputs are added** (cumulative):
 
@@ -76,8 +77,8 @@ The LLM judge reads `osu_policy.md`. Its section 6, the list of checks the judge
 |---|---|---|---|---|
 | Transaction fields only | 2 | 19 | 21 | 21% |
 | + reference tables | 14 | 20 | 34 | 34% |
-| + OSU system records | 33 | 27 | 60 | 61% |
-| + receipts | 70 | 29 | 99 | 100% |
+| + OSU system records | 33 | 27 | 60 | 60% |
+| + receipts | 71 | 29 | 100 | 100% |
 
 **Checks by pattern:**
 
@@ -88,15 +89,15 @@ The LLM judge reads `osu_policy.md`. Its section 6, the list of checks the judge
 | line_item | 12 | 0 | 12 |
 | document_presence | 18 | 0 | 18 |
 | aggregation | 3 | 0 | 3 |
-| cross_reference | 6 | 0 | 6 |
+| cross_reference | 7 | 0 | 7 |
 | purpose | 0 | 29 | 29 |
-| **Total** | **70** | **29** | **99** |
+| **Total** | **71** | **29** | **100** |
 
 What this means for the pipeline:
-- **71% of checks are deterministic** (70 of 99). Only questions about what something is, who it was for, or why go to the LLM.
+- **71% of checks are deterministic** (71 of 100). Only questions about what something is, who it was for, or why go to the LLM.
 - **With transaction fields alone, almost nothing deterministic can run.** Only 2 code checks: the $10,000 limit and the same-merchant split-purchase gate. Most of the 21 runnable checks are LLM checks working from item text, and in this data 44% of item text is generic, so expect many `unclear` answers.
 - **Reference tables are the cheapest gain** (+12 code checks). Most are small lists that come straight from the policy, such as the alcohol, postage, insurance and licensed-profession MCCs.
-- **Receipts unlock the most** (+37 code checks): tax, tips, fees, fare class, folio lines and terms. Without receipts, 39 checks report "not evaluated" (37 code, plus 2 LLM checks that can only be judged from the receipt: restocking fees and rental mileage).
+- **Receipts unlock the most** (+38 code checks): tax, tips, fees, fare class, folio lines and terms. Without receipts, 40 checks report "not evaluated" (38 code, plus 2 LLM checks that can only be judged from the receipt: restocking fees and rental mileage).
 - **28 rules apply to every transaction.** Services/shipping (12) and lodging (11) have the most category-specific rules.
 
 ## Regenerating
