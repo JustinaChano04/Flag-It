@@ -373,10 +373,13 @@ def _policy(ref: str, value=None, note: str | None = None) -> dict:
     return {"kind": "policy", "ref": ref, "value": value, "note": note}
 
 
+# Just under the rules file's agent.min_confidence (0.5 gives 0.42, the value the fixtures always used).
+LOW_CONFIDENCE = round(load_rules().agent_settings().min_confidence - 0.08, 2)
+
+
 def agent_outputs() -> dict[str, AgentOutput]:
     """The agent's answer for each run it finished, by run name, plus unresolved_citation, an
-    answer that is valid JSON but cites a receipt line that doesn't exist (the guardrails must catch it).
-    Low confidence below is 0.42; plan 16 sets the real threshold in the rules YAML."""
+    answer that is valid JSON but cites a receipt line that doesn't exist (the guardrails must catch it)."""
 
     def verdict(check_id: str, result: str, confidence: float, *evidence: dict) -> dict:
         return {"check_id": check_id, "result": result, "confidence": confidence, "evidence": list(evidence)}
@@ -399,7 +402,7 @@ def agent_outputs() -> dict[str, AgentOutput]:
             ),
             verdict("OSU-PRH-09a", "pass", 0.9),
         ],
-        "guardrails_low_confidence": [verdict("OSU-GEN-06a", "pass", 0.86), verdict("OSU-PRH-09a", "pass", 0.42)],
+        "guardrails_low_confidence": [verdict("OSU-GEN-06a", "pass", 0.86), verdict("OSU-PRH-09a", "pass", LOW_CONFIDENCE)],
         "lodging_stay_1": both_pass,
         "missing_document_1": both_pass,
         "unresolved_citation": [

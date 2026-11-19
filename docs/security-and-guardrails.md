@@ -27,7 +27,7 @@ These check data as it enters the system.
 | Schema validation | Correct types, required fields present, values in sensible ranges (for example, negative amounts or future dates) | API and normalization, using Pydantic | build | TBD |
 | Feature checks | Missing values, out-of-range values, categories never seen before, values far outside the usual range | Before the feature layer, using Pandera | build | TBD |
 | Quarantine | A record that fails is set to `rejected` or `needs_review`, with the reason. It is never filled in with guessed values and passed to a model. | Pipeline status tracking | build | TBD |
-| Prompt-injection defense | Text from receipts, merchant names, and descriptions is treated as data, never as instructions, when it goes into the judge's prompt | Judge client | build | TBD |
+| Prompt-injection defense | Text from receipts, merchant names, and descriptions is treated as data, never as instructions, when it goes into the judge's prompt | Judge client | build | built in plan 16 (fencing and an attack test set); live evaluation is plan 22 |
 
 Open questions:
 

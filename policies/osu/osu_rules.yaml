@@ -26,6 +26,10 @@
 #   notes       Caveats, cross-references.
 #   checks      The evaluation units (below).
 #
+# Top-level `agent:` section: settings for the investigation agent, which runs the llm checks.
+#   min_confidence  A verdict with a lower confidence sends the run to a person (0 to 1).
+#   max_tool_calls  How many tool calls the agent may make per run; after that it must answer.
+#
 # Check fields
 #   id          Rule ID + letter (OSU-TRV-13a). Stable like rule IDs.
 #   ask         The condition that must hold for the check to pass.
@@ -93,6 +97,10 @@ categories:                       # expense taxonomy the rules route to
   utilities_facilities: Utilities & facilities
   restricted_items: Restricted items
   other_unclear: Other / unclear
+
+agent:
+  min_confidence: 0.5
+  max_tool_calls: 6
 
 referenced_documents_not_ingested:  # cited by the PDF but not provided; rules depending on them are incomplete
   - Guidelines for Food and Drink Purchases (AVP Administration & Finance)

@@ -118,12 +118,12 @@ Transactions that pass the rule checks go to the risk screener, a trained model 
 
 ### 7. The agent judges, and the guardrails check its answer
 
-The investigation agent is a language model that runs the `llm` checks. It reads the snapshot, including the receipt and the anomaly score, and can look things up with its tools (see [Agent tools](#agent-tools)). It may cite the anomaly score as context, but every `fail` must cite a rule. It returns one verdict per check: `pass`, `fail`, or `unsure`, with a confidence and the evidence it relied on.
+The investigation agent is a language model that runs the `llm` checks. It reads the snapshot, including the receipt and the anomaly score, and can look things up with its tools (see [Agent tools](#agent-tools)). It may cite the anomaly score as context, but every `fail` must cite a rule. It returns one verdict per check: `pass`, `fail`, or `unsure`, with a confidence and the evidence it relied on. It judges every `llm` check that applies, and also each code check whose result was `unclear`, citing the line that settles it. A verdict on a code check counts toward the route but creates no flag, because that check already has one.
 
 The guardrails then check that answer. The run goes to `human_review` if any of these is true:
 
 - A verdict is `unsure`.
-- A confidence is below the threshold set in the rules YAML.
+- A confidence is below `agent.min_confidence` in the rules YAML.
 - A citation points to something that doesn't exist.
 - The agent's output fails schema validation after one retry.
 
@@ -439,6 +439,8 @@ The agent's whole answer is `{"verdicts": [...]}`, with each check appearing onc
 
 All tools are read-only and take an `as_of` time, so they never see data from after the transaction. Every call is logged with a `tool_call_id`. A `tool_result` citation points to that ID, and the guardrails check that it exists.
 
+Each tool is bound to the transaction being judged: the model chooses only a limit, a merchant text or a rule ID, never a cardholder or an `as_of` time. The call IDs live in a per-job ledger and are not saved, so a `tool_result` citation on a saved verdict can't be opened afterwards.
+
 | Tool | Returns | Status |
 |---|---|---|
 | `cardholder_history` | The cardholder's past transactions before `as_of`. | v1 |
@@ -520,7 +522,7 @@ Only the receipt reader and the investigation agent use the queue (Redis and Arq
 | Job | Payload | Worker does | If it keeps failing |
 |---|---|---|---|
 | `read_receipt` | `{receipt_id, txn_id, contract_version}` | Reads the file, writes `receipt_extraction`, then starts a new decision run. | The transaction keeps deciding without a receipt. The failure is logged. |
-| `investigate` | `{decision_id, snapshot_id, check_ids, contract_version}` | Loads the snapshot, runs the agent, applies the guardrails, writes verdicts, flags, and the route. | The run goes to `human_review` with reason `agent_failed`. |
+| `investigate` | `{decision_id, snapshot_id, check_ids, contract_version}`. `check_ids` holds the `llm` check IDs for the transaction's category plus each code check that is `unclear` in the run. | Loads the snapshot, runs the agent, applies the guardrails, writes verdicts, flags, and the route. | The run goes to `human_review` with reason `agent_failed`. |
 
 Workers reject a job whose major contract version differs from their own.
 
