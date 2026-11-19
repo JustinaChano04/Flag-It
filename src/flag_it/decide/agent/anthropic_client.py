@@ -1,4 +1,5 @@
-"""The Anthropic adapter for LlmClient. The SDK retries transient errors itself; what is left is LlmUnavailable."""
+"""The Anthropic adapter for LlmClient. The SDK retries transient errors itself; what is left and may pass is LlmUnavailable.
+A permanent error (401, 403, 404, 400) propagates, so the job fails and is retried after the fix."""
 
 import os
 from collections.abc import Sequence
@@ -22,6 +23,13 @@ def _blocks(message: Message) -> list[dict[str, Any]]:
         {"type": "tool_use", "id": u.id, "name": u.name, "input": dict(u.arguments)} for u in message.tool_uses
     ]
     return blocks
+
+
+def _is_transient(error: anthropic.APIError) -> bool:
+    """Connection problems, timeouts, rate limits and server errors may pass; other client errors will not."""
+    if isinstance(error, (anthropic.APIConnectionError, anthropic.RateLimitError)):
+        return True
+    return isinstance(error, anthropic.APIStatusError) and error.status_code >= 500
 
 
 class AnthropicClient:
@@ -53,6 +61,8 @@ class AnthropicClient:
         try:
             response = self._client.messages.create(**request)
         except anthropic.APIError as error:
+            if not _is_transient(error):
+                raise  # a bad key, an unknown model or a bad request will not fix itself: fail the job loudly
             raise LlmUnavailable(f"{type(error).__name__}: {error}") from error
         text = "".join(block.text for block in response.content if block.type == "text")
         uses = tuple(

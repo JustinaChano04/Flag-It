@@ -79,3 +79,32 @@ def test_a_provider_error_becomes_llm_unavailable():
     sdk, _ = stub(error=error)
     with pytest.raises(LlmUnavailable):
         AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[])
+
+
+def _status_error(cls, status):
+    response = SimpleNamespace(status_code=status, headers={}, request=SimpleNamespace(method="POST", url="https://example.invalid"))
+    return cls("x", response=response, body=None)
+
+
+@pytest.mark.parametrize(
+    "error",
+    [_status_error(anthropic.RateLimitError, 429), _status_error(anthropic.InternalServerError, 529)],
+)
+def test_rate_limits_and_server_errors_are_unavailable(error):
+    sdk, _ = stub(error=error)
+    with pytest.raises(LlmUnavailable):
+        AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[])
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        _status_error(anthropic.AuthenticationError, 401),
+        _status_error(anthropic.NotFoundError, 404),
+        _status_error(anthropic.BadRequestError, 400),
+    ],
+)
+def test_a_permanent_error_propagates_instead_of_looking_like_an_outage(error):
+    sdk, _ = stub(error=error)
+    with pytest.raises(anthropic.APIStatusError):
+        AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[])

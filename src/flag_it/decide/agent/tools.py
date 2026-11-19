@@ -7,8 +7,9 @@ the model's call carried; the guardrails later check that a `tool_result` citati
 call, and that a `history` citation names a recorded query and `as_of`. A failed call is not
 recorded, so it cannot be cited. The ledger lives for one job.
 
-Arguments are checked in Python before any SQL runs: a SQL error would abort the job's whole
-database transaction.
+Arguments are checked in Python before any SQL runs, and each call runs in a savepoint, so a SQL
+error cannot abort the job's database transaction. Merchant text in a result was written by third
+parties, so it is fenced like the transaction's own text.
 """
 
 import hashlib
@@ -22,6 +23,7 @@ from flag_it.contracts.rules import RuleSet
 from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.db.connection import Conn
 from flag_it.decide.agent.llm import ToolResult, ToolSpec, ToolUse
+from flag_it.decide.agent.prompt import fence
 from flag_it.understand.anomaly import as_of_for
 
 log = logging.getLogger(__name__)
@@ -122,14 +124,16 @@ class ToolBox:
 
     def call(self, use: ToolUse) -> ToolResult:
         try:
-            if use.name == "cardholder_history":
-                body, history = self._cardholder_history(use.arguments), True
-            elif use.name == "merchant_history":
-                body, history = self._merchant_history(use.arguments), True
-            elif use.name == "policy_lookup":
-                body, history = self._policy_lookup(use.arguments), False
-            else:
-                return ToolResult(use.id, f"unknown tool {use.name!r}", True)
+            # A savepoint: a failed query rolls back to here and leaves the job's transaction usable.
+            with self._conn.transaction():
+                if use.name == "cardholder_history":
+                    body, history = self._cardholder_history(use.arguments), True
+                elif use.name == "merchant_history":
+                    body, history = self._merchant_history(use.arguments), True
+                elif use.name == "policy_lookup":
+                    body, history = self._policy_lookup(use.arguments), False
+                else:
+                    return ToolResult(use.id, f"unknown tool {use.name!r}", True)
         except Exception as error:  # a bad call is an answer for the model, not a failed job
             log.warning("tool %s failed: %s", use.name, error)
             return ToolResult(use.id, f"{type(error).__name__}: {error}", True)
@@ -146,7 +150,7 @@ class ToolBox:
         rows = self._conn.execute(
             _CARDHOLDER_HISTORY, (self._txn.cardholder_id, self._txn.transaction_date, self._txn.txn_id, limit)
         ).fetchall()
-        return {"transactions": [dict(row) for row in rows]}
+        return {"transactions": [{**row, "merchant_norm": fence(row["merchant_norm"])} for row in map(dict, rows)]}
 
     def _merchant_history(self, arguments: Mapping[str, Any]) -> dict[str, Any]:
         merchant = arguments.get("merchant", self._txn.merchant_norm)
@@ -156,7 +160,7 @@ class ToolBox:
             _MERCHANT_HISTORY,
             (self._txn.cardholder_id, self._txn.agency_id, merchant, self._txn.transaction_date, self._txn.txn_id),
         ).fetchone()
-        return {"merchant": merchant, **dict(row)}
+        return {"merchant": fence(merchant), **dict(row)}
 
     def _policy_lookup(self, arguments: Mapping[str, Any]) -> dict[str, Any]:
         rule_id = arguments.get("rule_id")

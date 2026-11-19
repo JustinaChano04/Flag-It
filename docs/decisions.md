@@ -18,7 +18,8 @@ How to add an entry:
   - The agent gets every applicable `llm` check; `screen.match` is ignored in v1 and shown as a hint.
   - The model sees a minimized view: no database IDs, a pseudonym in place of the cardholder ID (it contains the name), and merchant, purpose and receipt text fenced as untrusted, with a standing instruction and a test set of attack strings.
   - Tools are bound to the snapshot's cardholder and `as_of`; the model picks only a limit, a merchant text or a rule ID. Calls are logged in a per-job ledger, with no table.
-  - A model that can't be reached ends the run in `human_review` with `agent_failed` (the SDK retries first); any other exception propagates to plan 21's retry policy.
+  - A model that can't be reached ends the run in `human_review` with `agent_failed` (the SDK retries first). "Can't be reached" means a connection error, a timeout, a rate limit (429) or a server error (5xx). A permanent error (a bad key, an unknown model, a bad request) propagates like any other exception to plan 21's retry policy, because `fill_route` is one-way and a mistyped setting would otherwise send a whole batch to people for good.
+  - Merchant text that a history tool returns is fenced like the transaction's own text, and each tool call runs in a savepoint so a failed query cannot abort the job's transaction.
 - **Why:** A small interface keeps the provider swappable without a large layer between us and the API. Thresholds in the rules YAML follow the project rule. The ledger answers the guardrails' "does this citation exist?" without a migration to a finished wave-0 plan.
 - **Rejected:**
   - LiteLLM (a large dependency, and forced-schema and tool behavior differ by provider) and the OpenAI-compatible API only (uneven tool and JSON-schema support on self-hosted servers).
