@@ -8,7 +8,7 @@ from typing import Annotated, Literal, Self
 import yaml
 from pydantic import Field, model_validator
 
-from flag_it.contracts.common import CheckId, InputModel, NonEmptyStr, RuleId, check_belongs_to_rule
+from flag_it.contracts.common import CheckId, InputModel, NonEmptyStr, RuleId, UnitInterval, check_belongs_to_rule
 from flag_it.contracts.enums import CheckMethod, Severity
 
 _REPO_RULES_PATH = Path(__file__).resolve().parents[3] / "policies" / "osu" / "osu_rules.yaml"
@@ -101,6 +101,17 @@ class Check(InputModel):
         return self
 
 
+class AgentSettings(InputModel):
+    """Settings for the investigation agent (contracts.md step 7). They apply to every llm check."""
+
+    min_confidence: UnitInterval  # a verdict below this sends the run to a person
+    max_tool_calls: Annotated[int, Field(ge=1, le=20)]  # tool calls per run; then the agent must answer
+
+
+class MissingAgentSettings(LookupError):
+    """The rules file has no `agent:` section, and something asked for it."""
+
+
 class Rule(InputModel):
     id: RuleId
     title: NonEmptyStr
@@ -133,6 +144,7 @@ class RuleSet(InputModel):
     policy: Policy
     categories: dict[str, NonEmptyStr]
     referenced_documents_not_ingested: list[str] = []
+    agent: AgentSettings | None = None
     rules: list[Rule]
     rules_version: NonEmptyStr  # added by load_rules, not written in the YAML
 
@@ -154,6 +166,11 @@ class RuleSet(InputModel):
                 if missing:
                     raise ValueError(f"check {check.id} 'when' references unknown checks: {missing}")
         return self
+
+    def agent_settings(self) -> AgentSettings:
+        if self.agent is None:
+            raise MissingAgentSettings("the rules file has no 'agent:' section")
+        return self.agent
 
     def has_category(self, category: str) -> bool:
         return category in self.categories
@@ -188,6 +205,7 @@ class _RulesFile(InputModel):
     policy: Policy
     categories: dict[str, NonEmptyStr]
     referenced_documents_not_ingested: list[str] = []
+    agent: AgentSettings | None = None
     rules: list[Rule]
 
 

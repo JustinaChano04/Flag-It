@@ -9,7 +9,7 @@ from pydantic import ValidationError
 import hashlib
 
 from flag_it.contracts.enums import CheckMethod
-from flag_it.contracts.rules import DEFAULT_RULES_PATH, UnknownParamError, default_rules_path, load_rules
+from flag_it.contracts.rules import DEFAULT_RULES_PATH, MissingAgentSettings, UnknownParamError, default_rules_path, load_rules
 
 
 @pytest.fixture(scope="module")
@@ -153,3 +153,37 @@ def test_retired_rules_are_skipped_by_checks_for(tmp_path):
     data["rules"][0]["status"] = "retired"
     rules = load_rules(_write(tmp_path, data))
     assert rules.checks_for("lodging", CheckMethod.CODE) == []
+
+
+def test_the_agent_settings_are_read(tmp_path):
+    data = _minimal()
+    data["agent"] = {"min_confidence": 0.5, "max_tool_calls": 6}
+    settings = load_rules(_write(tmp_path, data)).agent_settings()
+    assert (settings.min_confidence, settings.max_tool_calls) == (0.5, 6)
+
+
+def test_a_file_without_agent_settings_fails_loudly_when_they_are_needed(tmp_path):
+    rules = load_rules(_write(tmp_path, _minimal()))
+    assert rules.agent is None
+    with pytest.raises(MissingAgentSettings):
+        rules.agent_settings()
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"min_confidence": 1.5, "max_tool_calls": 6},
+        {"min_confidence": 0.5, "max_tool_calls": 0},
+        {"min_confidence": 0.5, "max_tool_calls": 6, "extra": 1},
+    ],
+)
+def test_bad_agent_settings_are_rejected(tmp_path, bad):
+    data = _minimal()
+    data["agent"] = bad
+    with pytest.raises(ValidationError):
+        load_rules(_write(tmp_path, data))
+
+
+def test_the_real_rules_file_has_agent_settings():
+    settings = load_rules().agent_settings()
+    assert (settings.min_confidence, settings.max_tool_calls) == (0.5, 6)

@@ -32,6 +32,27 @@ How to add an entry:
   - A claim-on-open lock (needs a new table, which this plan rules out) or a `409` when a review landed since the reviewer opened the run: more to build than one laptop reviewer needs.
   - Typed reviewer names kept as typed, or a fixed list of reviewers: the first splits one person into several labels, the second is a step toward the roles work this plan defers.
 
+## 2026-11-19: Investigation agent: its own client interface, settings in the rules YAML, and no tool-call table yet
+
+- **Decided:**
+  - `src/flag_it/decide/agent/` runs the `investigate` job. The model sits behind an `LlmClient` interface (messages and tools in, a reply out). One adapter, for the Anthropic API, ships; the model comes from `FLAG_IT_JUDGE_MODEL` (default `claude-sonnet-5-5`). Tests use a scripted fake.
+  - The answer is forced into the contract's schema by making it a tool: the model ends by calling `submit_verdicts`, whose arguments must validate as `AgentOutput`. An invalid answer gets one retry, then `invalid_output`.
+  - A new `agent:` section in the rules YAML holds `min_confidence` (0.5) and `max_tool_calls` (6). After the call cap the model is forced to answer, and what it can't settle is `unsure`, which goes to a person. The fixtures' low-confidence value is derived from `min_confidence` (plan 03's carried-over item).
+  - The agent also judges a code check's `unclear` flag, with the receipt line cited. Its verdict counts toward the route but creates no flag, because flags are unique per run and check and that check already has one. The contract's "one verdict per llm check" now reads "per llm check, and per code check that was unclear".
+  - The agent gets every applicable `llm` check; `screen.match` is ignored in v1 and shown as a hint.
+  - The model sees a minimized view: no database IDs, a pseudonym in place of the cardholder ID (it contains the name), and merchant, purpose and receipt text fenced as untrusted, with a standing instruction and a test set of attack strings.
+  - Tools are bound to the snapshot's cardholder and `as_of`; the model picks only a limit, a merchant text or a rule ID. Calls are logged in a per-job ledger, with no table.
+  - A model that can't be reached ends the run in `human_review` with `agent_failed` (the SDK retries first). "Can't be reached" means a connection error, a timeout, a rate limit (429) or a server error (5xx). A permanent error (a bad key, an unknown model, a bad request) propagates like any other exception to plan 21's retry policy, because `fill_route` is one-way and a mistyped setting would otherwise send a whole batch to people for good.
+  - Merchant text that a history tool returns is fenced like the transaction's own text, and each tool call runs in a savepoint so a failed query cannot abort the job's transaction.
+- **Why:** A small interface keeps the provider swappable without a large layer between us and the API. Thresholds in the rules YAML follow the project rule. The ledger answers the guardrails' "does this citation exist?" without a migration to a finished wave-0 plan.
+- **Rejected:**
+  - LiteLLM (a large dependency, and forced-schema and tool behavior differ by provider) and the OpenAI-compatible API only (uneven tool and JSON-schema support on self-hosted servers).
+  - The call cap as a Python constant, or no cap: a constant breaks "thresholds are params", and no cap leaves cost per transaction unbounded.
+  - Always sending unclear code flags to a person: the agent could never clear a false alarm.
+  - Filtering checks by `screen.match` in v1: it needs a parser for the expression language, and a wrong parse silently skips a check.
+  - Sending the full snapshot: it sends identifying data to a third party.
+  - A `tool_call` table now: it reopens plan 02. The cost is that a saved `tool_result` citation points to an ID that is gone after the job, so a reviewer can't yet open what the agent looked up.
+
 ## 2026-11-16: Rule checks: only certain evidence fails; deployed inputs; word lists in the rules YAML; a billing calendar
 
 - **Decided:**

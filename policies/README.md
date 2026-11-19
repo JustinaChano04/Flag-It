@@ -32,6 +32,8 @@ A **check** is the evaluation unit. Most rules contain more than one condition. 
 
 Each check has exactly one method and one set of inputs, so there is no "partly deterministic" rule: a rule is simply a mix of code and LLM checks.
 
+The top-level `agent:` section holds the investigation agent's settings, `min_confidence` and `max_tool_calls`. Code reads them with `RuleSet.agent_settings()`.
+
 ## How checks are classified
 
 | Facet | Question | Values |
