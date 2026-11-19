@@ -1,14 +1,16 @@
 """Request and response bodies for the intake and review APIs. See "Intake API" and "Review API"."""
 
+from datetime import date
 from typing import Annotated, Any, Self
 from uuid import UUID
 
 from pydantic import Field, model_validator
 
-from flag_it.contracts.common import CONTRACT_VERSION, InputModel, NonEmptyStr, RecordModel, RuleId, SemVer
-from flag_it.contracts.decide import DecisionRun, Flag
-from flag_it.contracts.enums import IntakeStatus, ReviewFinal
-from flag_it.contracts.review import FlagReview
+from flag_it.contracts.common import CONTRACT_VERSION, InputModel, Money, NonEmptyStr, RecordModel, RuleId, SemVer
+from flag_it.contracts.decide import AgentVerdict, DecisionRun, Flag
+from flag_it.contracts.enums import IntakeStatus, ReviewFinal, Severity
+from flag_it.contracts.review import FlagReview, ReviewOutcome
+from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.contracts.transactions import NormalizedTransaction
 
 
@@ -99,11 +101,28 @@ class DecisionHistory(RecordModel):
     decisions: tuple[DecisionRun, ...]
 
 
+class QueueSummary(RecordModel):
+    """What a queue row shows about one waiting run, so the screen needs no further requests."""
+
+    decision_id: UUID
+    merchant: NonEmptyStr
+    amount: Money
+    transaction_date: date
+
+
 class ReviewQueue(RecordModel):
-    """GET /reviews/queue."""
+    """GET /reviews/queue. `summaries` describe the items (read from each run's own snapshot); the route sends one per item."""
 
     contract_version: SemVer = CONTRACT_VERSION
     items: tuple[DecisionRun, ...]
+    summaries: tuple[QueueSummary, ...] = ()
+
+    @model_validator(mode="after")
+    def _summaries_match_items(self) -> Self:
+        listed = {run.decision_id for run in self.items}
+        if any(summary.decision_id not in listed for summary in self.summaries):
+            raise ValueError("every summary must belong to one of the listed runs")
+        return self
 
 
 class ReviewIn(InputModel):
@@ -114,3 +133,43 @@ class ReviewIn(InputModel):
     per_flag: tuple[FlagReview, ...] = ()
     missed_rule_ids: tuple[RuleId, ...] = ()
     reason: str | None = None
+
+
+class CitedRule(RecordModel):
+    """A rule a flag or an agent verdict cites, as the reviewer reads it."""
+
+    rule_id: RuleId
+    title: NonEmptyStr
+    text: NonEmptyStr
+    severity: Severity
+    source_section: NonEmptyStr
+    source_page: NonEmptyStr
+
+
+class ReviewDetail(RecordModel):
+    """GET /decisions/{decision_id}: everything a reviewer needs to judge one run.
+
+    `rules` holds every rule the flags and verdicts cite, in rules-file order. `history` is the
+    transaction's run chain, newest first, and `reviews` every review of any run in it, oldest
+    first, so a rerun that conflicts with an earlier review shows that review.
+    """
+
+    contract_version: SemVer = CONTRACT_VERSION
+    run: DecisionRun
+    snapshot: CombinedExpenseSnapshot
+    flags: tuple[Flag, ...]
+    agent_verdicts: tuple[AgentVerdict, ...] = ()
+    rules: tuple[CitedRule, ...] = ()
+    history: tuple[DecisionRun, ...]
+    reviews: tuple[ReviewOutcome, ...] = ()
+
+    @model_validator(mode="after")
+    def _one_run(self) -> Self:
+        run = self.run
+        if self.snapshot.snapshot_id != run.snapshot_id:
+            raise ValueError("snapshot must be the run's snapshot")
+        if any(flag.decision_id != run.decision_id for flag in self.flags):
+            raise ValueError("every flag must belong to the run")
+        if run.decision_id not in {r.decision_id for r in self.history}:
+            raise ValueError("history must include the run")
+        return self

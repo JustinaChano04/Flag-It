@@ -8,6 +8,30 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-17: Review app: queue, review rules, a detail endpoint, and no login yet
+
+- **Decided:**
+  - `GET /reviews/queue` lists the runs waiting for a person: route `human_review`, not replaced by a later run, and not reviewed yet. Oldest first (ties by `decision_id`), at most `limit` (default 100, at most 500). A replaced run drops out because its rerun now decides. The response also carries a `summaries` list (merchant, amount and date of each run's transaction, read from the run's own snapshot), so the queue screen makes one request instead of one per row. It is a new optional field on `ReviewQueue`: retyping `items` into summaries would be a major version bump.
+  - `POST /decisions/{decision_id}/review` accepts any run that has a route, not only `human_review` runs, since every review is a label. A run may be reviewed again, and the newest review counts. A run with no route yet (the agent is working) is `409`. Every `per_flag` flag must belong to the run and appear once, and every `missed_rule_ids` entry must be an active rule, or the answer is `422` listing each problem. Answering every flag is optional. The reviewer name is saved trimmed, with inner whitespace collapsed and case folded, and a blank name is `422`; the typed name is not kept, because a review has one `reviewer` field and this plan adds no migration.
+  - New endpoint `GET /decisions/{decision_id}` returns the contract model `ReviewDetail`: the run, its snapshot, flags, agent verdicts, the text of every rule they cite, the run chain, and every review in the chain. `CONTRACT_VERSION` is 1.1.0.
+  - `GET /receipts/{receipt_id}/file` streams the stored receipt with its checked content type and `X-Content-Type-Options: nosniff`, so a reviewer can see what the reader misread.
+  - No login in v1. The reviewer types a name, which the browser remembers. The API and the UI bind to 127.0.0.1. **Login and roles are required before either is reachable from another machine.** The name is a label, not an identity. Two reviewers can open the same run: there is no claim or lock, the newest review counts, and the earlier one stays as a label. This is a known gap that closes with login and roles.
+  - The UI is TypeScript, React 19 and Vite in `web/`. Its API types are generated from the contract's JSON Schemas (`npm run types`), committed, and checked (`npm run types:check`), like the fixtures. Tests use Vitest and Testing Library, with the shared fixtures as test data. Node 24 LTS.
+  - `python -m flag_it.fixtures.seed` fills an empty database with the fixtures and puts a sample PDF in the receipt store for each fixture receipt.
+- **Why:** A reviewer needs the rule text and the receipt next to each flag, and one endpoint keeps the screen to one request. Reviews of other routes and repeat reviews are labels the screener and the judge evaluation need, and append-only tables already answer a mistake with a later row. A login before the app leaves the laptop would be scope with no user.
+- **Rejected:**
+  - Every unreviewed `human_review` run in the queue, including replaced ones: a reviewer would judge runs that no longer decide anything.
+  - One review per run: a reviewer's mistake could never be corrected.
+  - Accepting any IDs in a review: wrong IDs become wrong labels for the screener.
+  - Several small endpoints (snapshot, rules, reviews): three to five calls per screen, and a contract change all the same.
+  - Copying the rules YAML into the UI build: the rule text could drift from the server's rules.
+  - A presigned MinIO URL for the receipt: it doesn't work with the local folder store.
+  - Hand-written TypeScript types: they drift from the contracts without notice.
+  - One request per queue row for the merchant and amount: up to 101 requests for the default `limit` of 100, and the cost grows with the queue.
+  - Retyping `ReviewQueue.items` from runs to summaries: it retypes a field, which is a major bump and breaks readers of 1.0.0.
+  - A claim-on-open lock (needs a new table, which this plan rules out) or a `409` when a review landed since the reviewer opened the run: more to build than one laptop reviewer needs.
+  - Typed reviewer names kept as typed, or a fixed list of reviewers: the first splits one person into several labels, the second is a step toward the roles work this plan defers.
+
 ## 2026-11-19: Investigation agent: its own client interface, settings in the rules YAML, and no tool-call table yet
 
 - **Decided:**

@@ -228,6 +228,7 @@ data/
 
 # md2pdf tool
 tools/md2pdf/node_modules/
+web/node_modules/
 exports/
 
 # One-off previews of docs (not the docs themselves)

@@ -6,6 +6,7 @@ from flag_it.contracts.api import (
     DecisionHistory,
     IntakeResponse,
     ReceiptAccepted,
+    ReviewDetail,
     ReviewIn,
     ReviewQueue,
     TransactionIn,
@@ -42,6 +43,7 @@ SCHEMA_MODELS: dict[str, type[ContractModel]] = {
         DecisionHistory,
         ReviewQueue,
         ReviewIn,
+        ReviewDetail,
         ReadReceiptJob,
         InvestigateJob,
     )

@@ -8,6 +8,7 @@ To add a stage's routes, import its router and add one include_router line below
 from fastapi import FastAPI
 
 from flag_it.intake.routes import router as intake_router
+from flag_it.review.routes import router as review_router
 from flag_it.understand.receipts.upload import router as receipts_router
 
 
@@ -15,6 +16,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Flag-It")
     app.include_router(intake_router)
     app.include_router(receipts_router)
+    app.include_router(review_router)
     return app
 
 

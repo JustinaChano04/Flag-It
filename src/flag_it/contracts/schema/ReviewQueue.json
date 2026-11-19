@@ -109,6 +109,40 @@
       "title": "DecisionRun",
       "type": "object"
     },
+    "QueueSummary": {
+      "description": "What a queue row shows about one waiting run, so the screen needs no further requests.",
+      "properties": {
+        "amount": {
+          "decimal_places": 2,
+          "max_digits": 12,
+          "title": "Amount",
+          "type": "string"
+        },
+        "decision_id": {
+          "format": "uuid",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "merchant": {
+          "minLength": 1,
+          "title": "Merchant",
+          "type": "string"
+        },
+        "transaction_date": {
+          "format": "date",
+          "title": "Transaction Date",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision_id",
+        "merchant",
+        "amount",
+        "transaction_date"
+      ],
+      "title": "QueueSummary",
+      "type": "object"
+    },
     "Route": {
       "enum": [
         "flag",
@@ -158,10 +192,10 @@
       "type": "object"
     }
   },
-  "description": "GET /reviews/queue.",
+  "description": "GET /reviews/queue. `summaries` describe the items (read from each run's own snapshot); the route sends one per item.",
   "properties": {
     "contract_version": {
-      "default": "1.0.0",
+      "default": "1.1.0",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "title": "Contract Version",
       "type": "string"
@@ -171,6 +205,14 @@
         "$ref": "#/$defs/DecisionRun"
       },
       "title": "Items",
+      "type": "array"
+    },
+    "summaries": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/QueueSummary"
+      },
+      "title": "Summaries",
       "type": "array"
     }
   },

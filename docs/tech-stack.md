@@ -29,7 +29,7 @@ These are the parts of the system that are not components in the logical view.
 
 | Layer | Question it answers | Choice | Status |
 |---|---|---|---|
-| Input: UI | How does someone upload one transaction and receipt, and work the human review queue? | React + Vite | set |
+| Input: UI | How does someone upload one transaction and receipt, and work the human review queue? | React + Vite with TypeScript, in `web/`. API types are generated from the contract's JSON Schemas. Tests: Vitest and Testing Library. Node 24 LTS. The review screens exist; uploading from the UI does not yet. | set |
 | Input: batch API | How do batches of transactions come in? | FastAPI, with one endpoint for single transactions and one for batches | set |
 | Normalization | Where do raw fields become the combined expense record? | Python: a Pydantic schema plus pure, versioned functions in the pipeline container | set |
 | Queue and workers | Which steps run in the background, and how many queues are there? | Redis + Arq. Only the investigation agent and the receipt reader use a queue. Every other step runs directly. One worker image is used everywhere, and the `WORKER_STAGES` setting picks which steps it runs. | lean |
