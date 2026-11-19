@@ -78,8 +78,8 @@ SPECS = (
     ),
     ToolSpec(
         "merchant_history",
-        "How often this cardholder's agency has bought from a merchant before this transaction. "
-        "With no merchant, uses this transaction's merchant.",
+        "How often this cardholder has bought from a merchant, within this agency, before this transaction "
+        "(the merchant name is matched ignoring case). With no merchant, uses this transaction's merchant.",
         {"type": "object", "properties": {"merchant": {"type": "string"}}, "additionalProperties": False},
     ),
     ToolSpec(
@@ -109,7 +109,7 @@ _MERCHANT_HISTORY = f"""
 SELECT count(*) AS visits, coalesce(sum(amount), 0) AS total_amount,
        min(transaction_date) AS first_seen, max(transaction_date) AS last_seen
 FROM ({_NEWEST}) newest
-WHERE cardholder_id = %s AND agency_id = %s AND merchant_norm = %s AND transaction_date < %s AND txn_id <> %s
+WHERE cardholder_id = %s AND agency_id = %s AND lower(merchant_norm) = lower(%s) AND transaction_date < %s AND txn_id <> %s
 """
 
 

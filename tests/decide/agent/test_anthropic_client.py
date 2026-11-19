@@ -36,7 +36,7 @@ def test_the_default_model_is_a_setting_default_not_a_guess():
 
 
 def test_a_reply_with_text_and_tool_calls_is_translated():
-    sdk, seen = stub(SimpleNamespace(content=[text("Looking."), tool_use("tu_1", "cardholder_history", {"limit": 5})]))
+    sdk, seen = stub(SimpleNamespace(stop_reason="end_turn", content=[text("Looking."), tool_use("tu_1", "cardholder_history", {"limit": 5})]))
     client = AnthropicClient("m-1", client=sdk, max_tokens=100)
     got = client.complete(system="S", messages=[Message("user", "hi")], tools=[SPEC])
     assert got.text == "Looking."
@@ -47,7 +47,7 @@ def test_a_reply_with_text_and_tool_calls_is_translated():
 
 
 def test_messages_carry_tool_calls_and_results_in_the_providers_shape():
-    sdk, seen = stub(SimpleNamespace(content=[text("ok")]))
+    sdk, seen = stub(SimpleNamespace(stop_reason="end_turn", content=[text("ok")]))
     messages = [
         Message("user", "go"),
         Message("assistant", "", (ToolUse("tu_1", "cardholder_history", {}),)),
@@ -68,7 +68,7 @@ def test_messages_carry_tool_calls_and_results_in_the_providers_shape():
 
 
 def test_forcing_a_tool_sets_tool_choice():
-    sdk, seen = stub(SimpleNamespace(content=[text("")]))
+    sdk, seen = stub(SimpleNamespace(stop_reason="end_turn", content=[text("")]))
     AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[SPEC], force_tool="cardholder_history")
     assert seen["tool_choice"] == {"type": "tool", "name": "cardholder_history"}
 
@@ -108,3 +108,10 @@ def test_a_permanent_error_propagates_instead_of_looking_like_an_outage(error):
     sdk, _ = stub(error=error)
     with pytest.raises(anthropic.APIStatusError):
         AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[])
+
+
+def test_a_reply_cut_off_at_max_tokens_is_logged(caplog):
+    sdk, _ = stub(SimpleNamespace(stop_reason="max_tokens", content=[text("")]))
+    with caplog.at_level("WARNING"):
+        AnthropicClient("m", client=sdk).complete(system="S", messages=[Message("user", "x")], tools=[])
+    assert "max_tokens" in caplog.text

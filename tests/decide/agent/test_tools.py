@@ -125,3 +125,10 @@ def test_a_failed_query_leaves_the_jobs_transaction_usable(conn, monkeypatch):
     assert bad.is_error and not ledger.has("tu_bad")
     good = call(box, "merchant_history", id="tu_good")  # would fail with InFailedSqlTransaction without a savepoint
     assert not good.is_error and ledger.has("tu_good")
+
+
+def test_merchant_history_ignores_case_in_the_merchant_name(conn):
+    save_history(conn, on=TXN.transaction_date - timedelta(days=2), amount="10.00", merchant="ACME SUPPLY")
+    box, _ = toolbox(conn)
+    body = json.loads(call(box, "merchant_history", merchant="Acme Supply").content)
+    assert body["visits"] == 1

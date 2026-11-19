@@ -1,6 +1,7 @@
 """The Anthropic adapter for LlmClient. The SDK retries transient errors itself; what is left and may pass is LlmUnavailable.
 A permanent error (401, 403, 404, 400) propagates, so the job fails and is retried after the fix."""
 
+import logging
 import os
 from collections.abc import Sequence
 from typing import Any
@@ -8,6 +9,8 @@ from typing import Any
 import anthropic
 
 from flag_it.decide.agent.llm import LlmUnavailable, Message, Reply, ToolSpec, ToolUse
+
+log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "claude-sonnet-5-5"  # overridden by the setting FLAG_IT_JUDGE_MODEL
 
@@ -33,7 +36,7 @@ def _is_transient(error: anthropic.APIError) -> bool:
 
 
 class AnthropicClient:
-    def __init__(self, model: str, *, client: Any = None, max_tokens: int = 4096) -> None:
+    def __init__(self, model: str, *, client: Any = None, max_tokens: int = 8192) -> None:
         self.model_tag = model
         self._client = client if client is not None else anthropic.Anthropic()  # reads ANTHROPIC_API_KEY
         self._max_tokens = max_tokens
@@ -64,6 +67,8 @@ class AnthropicClient:
             if not _is_transient(error):
                 raise  # a bad key, an unknown model or a bad request will not fix itself: fail the job loudly
             raise LlmUnavailable(f"{type(error).__name__}: {error}") from error
+        if response.stop_reason == "max_tokens":  # the answer may be cut off and then fail validation
+            log.warning("model %s stopped at max_tokens (%s): the reply may be truncated", self.model_tag, self._max_tokens)
         text = "".join(block.text for block in response.content if block.type == "text")
         uses = tuple(
             ToolUse(id=block.id, name=block.name, arguments=dict(block.input))
