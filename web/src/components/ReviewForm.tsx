@@ -73,11 +73,11 @@ export function ReviewForm({ decisionId, flags }: { decisionId: string; flags: F
       {flags.map((flag) => (
         <fieldset key={flag.flag_id}>
           <legend>{flag.check_id}: is this flag right?</legend>
-          <label>
+          <label className="choice good">
             <input type="radio" name={`agree-${flag.flag_id}`} checked={answer(flag.flag_id).agree === true}
               onChange={() => setAnswer(flag.flag_id, { agree: true })} /> Agree
           </label>
-          <label>
+          <label className="choice bad">
             <input type="radio" name={`agree-${flag.flag_id}`} checked={answer(flag.flag_id).agree === false}
               onChange={() => setAnswer(flag.flag_id, { agree: false })} /> Disagree
           </label>
@@ -95,12 +95,12 @@ export function ReviewForm({ decisionId, flags }: { decisionId: string; flags: F
         Reason <textarea value={reason} onChange={(e) => setReason(e.target.value)} />
       </label>
 
-      <fieldset>
+      <fieldset className="final">
         <legend>Final call</legend>
-        <label>
+        <label className="choice good">
           <input type="radio" name="final" checked={final === "approve"} onChange={() => setFinal("approve")} /> Approve
         </label>
-        <label>
+        <label className="choice bad">
           <input type="radio" name="final" checked={final === "flag"} onChange={() => setFinal("flag")} /> Flag
         </label>
       </fieldset>

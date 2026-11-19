@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "web/src/styles.css"
+        ],
+        "createdAt": "2026-11-19T22:33:04.579Z",
+        "reason": "agent: line 41 is a conventional blockquote quote rule, not a card accent; line 36 fixed instead"
+      }
+    ]
+  }
+}

@@ -43,7 +43,7 @@ function FlagCard({ flag, rule }: { flag: Flag; rule?: CitedRule }) {
 
 function Receipt({ receipt }: { receipt: ReceiptExtraction }) {
   return (
-    <section>
+    <section className="card">
       <h2>Receipt</h2>
       <p>
         Match: <strong>{receipt.match_status}</strong> · read by <code>{receipt.reader_model}</code>
@@ -77,22 +77,30 @@ function Detail({ detail }: { detail: ReviewDetail }) {
   const rules = new Map((detail.rules ?? []).map((rule) => [rule.rule_id, rule]));
   return (
     <>
-      <h1>
-        {txn.merchant_norm} · {money(txn.amount)}
-      </h1>
-      <p>
-        <strong>{run.route ? ROUTE_LABEL[run.route] : "The agent is still working"}</strong>
-        {run.decided_by && <> · decided by {run.decided_by}</>} · {run.trigger.replace("_", " ")} run of {day(run.created_at)}
-      </p>
-      {(run.escalation_reasons ?? []).length > 0 && (
-        <ul>
-          {(run.escalation_reasons ?? []).map((reason) => (
-            <li key={reason}>{reasonLabel(reason)}</li>
-          ))}
-        </ul>
-      )}
+      <section className="card">
+        <div className="summary">
+          <h1>{txn.merchant_norm}</h1>
+          <span className="amount">{money(txn.amount)}</span>
+          {run.route ? (
+            <span className={`badge route-${run.route}`}>{ROUTE_LABEL[run.route]}</span>
+          ) : (
+            <span className="badge route-human_review">The agent is still working</span>
+          )}
+        </div>
+        <p className="meta">
+          {run.decided_by && <>decided by {run.decided_by} · </>}
+          {run.trigger.replace("_", " ")} run of {day(run.created_at)}
+        </p>
+        {(run.escalation_reasons ?? []).length > 0 && (
+          <ul className="reasons">
+            {(run.escalation_reasons ?? []).map((reason) => (
+              <li key={reason} className="chip">{reasonLabel(reason)}</li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <section>
+      <section className="card">
         <h2>Transaction</h2>
         <table>
           <tbody>
@@ -115,7 +123,7 @@ function Detail({ detail }: { detail: ReviewDetail }) {
 
       {receipt ? <Receipt receipt={receipt} /> : <p>No receipt has been uploaded.</p>}
 
-      <section>
+      <section className="card">
         <h2>Flags ({flags.length})</h2>
         {flags.length === 0 && <p>No check flagged anything.</p>}
         {flags.map((flag) => (

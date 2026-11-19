@@ -15,11 +15,11 @@ function QueueRow({ run, summary }: { run: DecisionRun; summary: Summary | undef
       <td>
         <a href={decisionHref(run.decision_id)}>{summary?.merchant ?? "(unknown)"}</a>
       </td>
-      <td className="num">{summary ? money(summary.amount) : ""}</td>
+      <td className="num amount">{summary ? money(summary.amount) : ""}</td>
       <td>
         <ul className="plain">
           {(run.escalation_reasons ?? []).map((reason) => (
-            <li key={reason}>{reasonLabel(reason)}</li>
+            <li key={reason} className="chip">{reasonLabel(reason)}</li>
           ))}
         </ul>
       </td>
@@ -34,12 +34,12 @@ export function QueuePage() {
   const items = queue.data.items;
   const summaries = new Map((queue.data.summaries ?? []).map((summary) => [summary.decision_id, summary]));
   return (
-    <section>
+    <section className="card">
       <h1>Waiting for review</h1>
       {items.length === 0 ? (
         <p>Nothing is waiting for review.</p>
       ) : (
-        <table>
+        <table className="queue">
           <thead>
             <tr>
               <th>Since</th>
