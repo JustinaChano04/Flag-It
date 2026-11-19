@@ -509,9 +509,17 @@ Body shapes (models in `src/flag_it/contracts/api.py`):
 | Method and path | What it does |
 |---|---|
 | `GET /reviews/queue` | Decision runs waiting for a person. |
+| `GET /decisions/{decision_id}` | One run with everything a reviewer reads. |
 | `POST /decisions/{decision_id}/review` | Record a review outcome. |
+| `GET /receipts/{receipt_id}/file` | The uploaded receipt file, with its content type. |
 
-`GET /reviews/queue` returns `ReviewQueue`: `{contract_version, items}`, where each item is a decision run. `POST /decisions/{decision_id}/review` takes `ReviewIn`: `{reviewer, final, per_flag, missed_rule_ids, reason}`. The server adds `review_id`, `decision_id`, and `created_at`, and returns the `ReviewOutcome`.
+`GET /reviews/queue` returns `ReviewQueue`: `{contract_version, items, summaries}`, where each item is a decision run and each summary (`{decision_id, merchant, amount, transaction_date}`) describes one of them, read from the run's own snapshot. A run is waiting when its route is `human_review`, no later run replaces it, and nobody has reviewed it. Oldest first; `?limit=` caps the list (default 100, at most 500).
+
+`GET /decisions/{decision_id}` returns `ReviewDetail`: `{contract_version, run, snapshot, flags, agent_verdicts, rules, history, reviews}`. `rules` holds the text of every rule a flag or verdict cites. `history` is the transaction's run chain, newest first, and `reviews` every review of a run in that chain, oldest first, so a `review_conflict` rerun shows the review it conflicts with.
+
+`POST /decisions/{decision_id}/review` takes `ReviewIn`: `{reviewer, final, per_flag, missed_rule_ids, reason}`. The server adds `review_id`, `decision_id`, and `created_at`, and returns the `ReviewOutcome` with `201`. Any run with a route can be reviewed, and reviewed again: the newest review counts. A run without a route is `409`. A `per_flag` entry for a flag of another run, a flag answered twice, or a `missed_rule_ids` entry that isn't an active rule is `422`, with one `{loc, msg}` per problem, the same shape as FastAPI's own validation errors.
+
+There is no login yet: `reviewer` is the name the client sends. The server saves it trimmed, with inner whitespace collapsed and case folded, and refuses a blank one with `422`. It is a label, not an identity. Nothing stops two reviewers opening the same run; the newest review counts. The API must stay bound to this machine until login and roles exist.
 
 ### Queue jobs
 
