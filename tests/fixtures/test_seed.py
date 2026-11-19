@@ -44,3 +44,13 @@ def test_the_waiting_run_can_be_finished(conn):
     run = fixtures.decision_run("agent_working")
     decided = records.fill_route(conn, run.decision_id, route="agent_approve", decided_by="agent")
     assert decided is not None and decided.route.value == "agent_approve"
+
+
+def test_sample_receipts_are_pdfs_at_each_fixture_storage_key(tmp_path):
+    from flag_it.fixtures.seed import put_sample_receipts
+    from flag_it.understand.receipts.store import LocalStore
+
+    store = LocalStore(tmp_path)
+    assert put_sample_receipts(store) == len(fixtures.receipt_files())
+    for file in fixtures.receipt_files().values():
+        assert store.get(file.storage_key).startswith(b"%PDF-")
