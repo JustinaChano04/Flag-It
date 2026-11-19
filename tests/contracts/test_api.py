@@ -96,3 +96,35 @@ def test_review_in_rejects_unknown_fields():
     assert ReviewIn(reviewer="r7", final="approve", missed_rule_ids=["OSU-TRV-13"]).final == "approve"
     with pytest.raises(ValidationError):
         ReviewIn(reviewer="r7", final="approve", review_id=str(TXN_ID))  # the server assigns this
+
+
+def test_review_detail_keeps_its_parts_on_one_run():
+    from uuid import uuid4
+
+    from flag_it.contracts.api import ReviewDetail
+    from flag_it.contracts.examples import AS_OF, SNAPSHOT_ID, combined
+    from flag_it.contracts.snapshot import CombinedExpenseSnapshot
+
+    run = decision_run()
+    snap = CombinedExpenseSnapshot.build(combined(), snapshot_id=SNAPSHOT_ID, created_at=AS_OF)
+    detail = ReviewDetail(run=run, snapshot=snap, flags=(flag(),), history=(run,))
+    assert detail.contract_version == CONTRACT_VERSION
+    with pytest.raises(ValidationError, match="the run's snapshot"):
+        ReviewDetail(run=run, snapshot=snap.model_copy(update={"snapshot_id": uuid4()}), flags=(), history=(run,))
+    with pytest.raises(ValidationError, match="belong to the run"):
+        ReviewDetail(run=run, snapshot=snap, flags=(flag(decision_id=uuid4()),), history=(run,))
+    with pytest.raises(ValidationError, match="history must include"):
+        ReviewDetail(run=run, snapshot=snap, flags=(), history=())
+
+
+def test_review_queue_summaries_must_belong_to_listed_runs():
+    from flag_it.contracts.api import QueueSummary, ReviewQueue
+
+    run = decision_run()
+    summary = QueueSummary(
+        decision_id=run.decision_id, merchant="JOES CAFE", amount="412.00", transaction_date="2025-01-14"
+    )
+    assert ReviewQueue(items=(run,), summaries=(summary,)).summaries == (summary,)
+    assert ReviewQueue(items=(run,)).summaries == ()  # the 1.0.0 shape still validates
+    with pytest.raises(ValidationError, match="listed runs"):
+        ReviewQueue(items=(), summaries=(summary,))

@@ -1,0 +1,1093 @@
+{
+  "$defs": {
+    "AgentResult": {
+      "enum": [
+        "pass",
+        "fail",
+        "unsure"
+      ],
+      "title": "AgentResult",
+      "type": "string"
+    },
+    "AgentVerdict": {
+      "additionalProperties": false,
+      "description": "The agent's answer for one llm check. The LLM's output is forced to AgentOutput.",
+      "properties": {
+        "check_id": {
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+[a-z]+$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "evidence": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "result": {
+          "$ref": "#/$defs/AgentResult"
+        }
+      },
+      "required": [
+        "check_id",
+        "result",
+        "confidence"
+      ],
+      "title": "AgentVerdict",
+      "type": "object"
+    },
+    "AnomalyResult": {
+      "properties": {
+        "as_of": {
+          "format": "date-time",
+          "title": "As Of",
+          "type": "string"
+        },
+        "history_length": {
+          "minimum": 0,
+          "title": "History Length",
+          "type": "integer"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        },
+        "status": {
+          "$ref": "#/$defs/AnomalyStatus"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "model_version",
+        "status",
+        "history_length",
+        "as_of"
+      ],
+      "title": "AnomalyResult",
+      "type": "object"
+    },
+    "AnomalyStatus": {
+      "enum": [
+        "scored",
+        "insufficient_history"
+      ],
+      "title": "AnomalyStatus",
+      "type": "string"
+    },
+    "CategoryMethod": {
+      "enum": [
+        "lookup",
+        "model"
+      ],
+      "title": "CategoryMethod",
+      "type": "string"
+    },
+    "CategoryResult": {
+      "properties": {
+        "category": {
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "method": {
+          "$ref": "#/$defs/CategoryMethod"
+        },
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "model_version",
+        "category",
+        "confidence",
+        "method"
+      ],
+      "title": "CategoryResult",
+      "type": "object"
+    },
+    "Citation": {
+      "description": "One piece of evidence. The guardrails check that `ref` exists.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/EvidenceKind"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "title": "Citation",
+      "type": "object"
+    },
+    "CitedRule": {
+      "description": "A rule a flag or an agent verdict cites, as the reviewer reads it.",
+      "properties": {
+        "rule_id": {
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source_page": {
+          "minLength": 1,
+          "title": "Source Page",
+          "type": "string"
+        },
+        "source_section": {
+          "minLength": 1,
+          "title": "Source Section",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "title",
+        "text",
+        "severity",
+        "source_section",
+        "source_page"
+      ],
+      "title": "CitedRule",
+      "type": "object"
+    },
+    "CombinedExpense": {
+      "description": "Everything known about one transaction. Parts stay nested so each keeps its version.",
+      "properties": {
+        "anomaly": {
+          "$ref": "#/$defs/AnomalyResult"
+        },
+        "category": {
+          "$ref": "#/$defs/CategoryResult"
+        },
+        "receipt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReceiptExtraction"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transaction": {
+          "$ref": "#/$defs/NormalizedTransaction"
+        }
+      },
+      "required": [
+        "transaction",
+        "category",
+        "anomaly"
+      ],
+      "title": "CombinedExpense",
+      "type": "object"
+    },
+    "CombinedExpenseSnapshot": {
+      "properties": {
+        "contract_version": {
+          "default": "1.1.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/CombinedExpense"
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "source_versions": {
+          "$ref": "#/$defs/SourceVersions"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "txn_id",
+        "payload",
+        "source_versions",
+        "created_at"
+      ],
+      "title": "CombinedExpenseSnapshot",
+      "type": "object"
+    },
+    "DecidedBy": {
+      "enum": [
+        "rules",
+        "screener",
+        "agent",
+        "guardrails",
+        "rerun"
+      ],
+      "title": "DecidedBy",
+      "type": "string"
+    },
+    "DecisionRun": {
+      "description": "One pass of the Decide stages over one snapshot. Route is empty while the agent works.",
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decided_by": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DecidedBy"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "decision_id": {
+          "format": "uuid",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "escalation_reasons": {
+          "default": [],
+          "items": {
+            "pattern": "^((unsure|low_confidence):[A-Z0-9]+(-[A-Z0-9]+)+[a-z]+|citation_unresolved|invalid_output|agent_failed|review_conflict)$",
+            "type": "string"
+          },
+          "title": "Escalation Reasons",
+          "type": "array"
+        },
+        "replaces_decision_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Replaces Decision Id"
+        },
+        "route": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Route"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rules_version": {
+          "minLength": 1,
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "screener": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ScreenerResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "snapshot_id": {
+          "format": "uuid",
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "trigger": {
+          "$ref": "#/$defs/RunTrigger"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision_id",
+        "txn_id",
+        "snapshot_id",
+        "trigger",
+        "rules_version",
+        "created_at"
+      ],
+      "title": "DecisionRun",
+      "type": "object"
+    },
+    "EvidenceKind": {
+      "enum": [
+        "field",
+        "receipt",
+        "policy",
+        "tool_result",
+        "history"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+    },
+    "Flag": {
+      "properties": {
+        "check_id": {
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+[a-z]+$",
+          "title": "Check Id",
+          "type": "string"
+        },
+        "decision_id": {
+          "format": "uuid",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "due_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Due At"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Citation"
+          },
+          "minItems": 1,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "flag_id": {
+          "format": "uuid",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/FlagResult"
+        },
+        "rule_id": {
+          "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "score": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Score",
+          "type": "number"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity"
+        },
+        "source": {
+          "$ref": "#/$defs/FlagSource"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "flag_id",
+        "decision_id",
+        "txn_id",
+        "rule_id",
+        "check_id",
+        "result",
+        "severity",
+        "evidence",
+        "score",
+        "source"
+      ],
+      "title": "Flag",
+      "type": "object"
+    },
+    "FlagResult": {
+      "enum": [
+        "fail",
+        "violation",
+        "unclear",
+        "pending",
+        "not_evaluated"
+      ],
+      "title": "FlagResult",
+      "type": "string"
+    },
+    "FlagReview": {
+      "properties": {
+        "agree": {
+          "title": "Agree",
+          "type": "boolean"
+        },
+        "flag_id": {
+          "format": "uuid",
+          "title": "Flag Id",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "flag_id",
+        "agree"
+      ],
+      "title": "FlagReview",
+      "type": "object"
+    },
+    "FlagSource": {
+      "enum": [
+        "code",
+        "llm"
+      ],
+      "title": "FlagSource",
+      "type": "string"
+    },
+    "LineType": {
+      "enum": [
+        "item",
+        "tax",
+        "tip",
+        "fee",
+        "room",
+        "other"
+      ],
+      "title": "LineType",
+      "type": "string"
+    },
+    "MatchStatus": {
+      "enum": [
+        "matched",
+        "mismatch",
+        "unmatched"
+      ],
+      "title": "MatchStatus",
+      "type": "string"
+    },
+    "NormalizedTransaction": {
+      "description": "The typed version of a raw row. Raw text stays in the raw row.",
+      "properties": {
+        "agency_id": {
+          "minLength": 1,
+          "title": "Agency Id",
+          "type": "string"
+        },
+        "amount": {
+          "decimal_places": 2,
+          "max_digits": 12,
+          "title": "Amount",
+          "type": "string"
+        },
+        "business_purpose": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Business Purpose"
+        },
+        "cardholder_id": {
+          "minLength": 1,
+          "title": "Cardholder Id",
+          "type": "string"
+        },
+        "mcc_code": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mcc Code"
+        },
+        "mcc_description": {
+          "minLength": 1,
+          "title": "Mcc Description",
+          "type": "string"
+        },
+        "merchant_norm": {
+          "minLength": 1,
+          "title": "Merchant Norm",
+          "type": "string"
+        },
+        "normalizer_version": {
+          "minLength": 1,
+          "title": "Normalizer Version",
+          "type": "string"
+        },
+        "post_date": {
+          "format": "date",
+          "title": "Post Date",
+          "type": "string"
+        },
+        "raw_id": {
+          "format": "uuid",
+          "title": "Raw Id",
+          "type": "string"
+        },
+        "transaction_date": {
+          "format": "date",
+          "title": "Transaction Date",
+          "type": "string"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "txn_id",
+        "raw_id",
+        "agency_id",
+        "cardholder_id",
+        "merchant_norm",
+        "mcc_description",
+        "amount",
+        "transaction_date",
+        "post_date",
+        "normalizer_version"
+      ],
+      "title": "NormalizedTransaction",
+      "type": "object"
+    },
+    "ReceiptExtraction": {
+      "description": "What the reader got from one receipt file. Unreadable fields stay empty.",
+      "properties": {
+        "line_items": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ReceiptLineItem"
+          },
+          "title": "Line Items",
+          "type": "array"
+        },
+        "match_status": {
+          "$ref": "#/$defs/MatchStatus"
+        },
+        "merchant": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Merchant"
+        },
+        "reader_model": {
+          "minLength": 1,
+          "title": "Reader Model",
+          "type": "string"
+        },
+        "receipt_date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Receipt Date"
+        },
+        "receipt_id": {
+          "format": "uuid",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "subtotal": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subtotal"
+        },
+        "tax": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tax"
+        },
+        "tip": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tip"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "txn_id": {
+          "format": "uuid",
+          "title": "Txn Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "txn_id",
+        "reader_model",
+        "match_status"
+      ],
+      "title": "ReceiptExtraction",
+      "type": "object"
+    },
+    "ReceiptLineItem": {
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "line_type": {
+          "$ref": "#/$defs/LineType",
+          "default": "item"
+        },
+        "quantity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantity"
+        },
+        "unit_price": {
+          "anyOf": [
+            {
+              "decimal_places": 2,
+              "max_digits": 12,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Price"
+        }
+      },
+      "title": "ReceiptLineItem",
+      "type": "object"
+    },
+    "ReviewFinal": {
+      "enum": [
+        "approve",
+        "flag"
+      ],
+      "title": "ReviewFinal",
+      "type": "string"
+    },
+    "ReviewOutcome": {
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "decision_id": {
+          "format": "uuid",
+          "title": "Decision Id",
+          "type": "string"
+        },
+        "final": {
+          "$ref": "#/$defs/ReviewFinal"
+        },
+        "missed_rule_ids": {
+          "default": [],
+          "items": {
+            "pattern": "^[A-Z0-9]+(?:-[A-Z0-9]+)+$",
+            "type": "string"
+          },
+          "title": "Missed Rule Ids",
+          "type": "array"
+        },
+        "per_flag": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/FlagReview"
+          },
+          "title": "Per Flag",
+          "type": "array"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "review_id": {
+          "format": "uuid",
+          "title": "Review Id",
+          "type": "string"
+        },
+        "reviewer": {
+          "minLength": 1,
+          "title": "Reviewer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "review_id",
+        "decision_id",
+        "reviewer",
+        "final",
+        "created_at"
+      ],
+      "title": "ReviewOutcome",
+      "type": "object"
+    },
+    "Route": {
+      "enum": [
+        "flag",
+        "auto_approve",
+        "agent_approve",
+        "agent_flag",
+        "human_review"
+      ],
+      "title": "Route",
+      "type": "string"
+    },
+    "RunTrigger": {
+      "enum": [
+        "initial",
+        "late_receipt",
+        "deadline"
+      ],
+      "title": "RunTrigger",
+      "type": "string"
+    },
+    "ScreenerResult": {
+      "properties": {
+        "model_version": {
+          "minLength": 1,
+          "title": "Model Version",
+          "type": "string"
+        },
+        "probability": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Probability",
+          "type": "number"
+        },
+        "threshold": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "required": [
+        "probability",
+        "threshold",
+        "model_version"
+      ],
+      "title": "ScreenerResult",
+      "type": "object"
+    },
+    "Severity": {
+      "enum": [
+        "prohibited",
+        "conditional",
+        "documentation",
+        "guidance"
+      ],
+      "title": "Severity",
+      "type": "string"
+    },
+    "SourceVersions": {
+      "properties": {
+        "anomaly": {
+          "minLength": 1,
+          "title": "Anomaly",
+          "type": "string"
+        },
+        "categorizer": {
+          "minLength": 1,
+          "title": "Categorizer",
+          "type": "string"
+        },
+        "normalizer": {
+          "minLength": 1,
+          "title": "Normalizer",
+          "type": "string"
+        },
+        "reader_model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reader Model"
+        }
+      },
+      "required": [
+        "normalizer",
+        "categorizer",
+        "anomaly"
+      ],
+      "title": "SourceVersions",
+      "type": "object"
+    }
+  },
+  "description": "GET /decisions/{decision_id}: everything a reviewer needs to judge one run.\n\n`rules` holds every rule the flags and verdicts cite, in rules-file order. `history` is the\ntransaction's run chain, newest first, and `reviews` every review of any run in it, oldest\nfirst, so a rerun that conflicts with an earlier review shows that review.",
+  "properties": {
+    "agent_verdicts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AgentVerdict"
+      },
+      "title": "Agent Verdicts",
+      "type": "array"
+    },
+    "contract_version": {
+      "default": "1.1.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "flags": {
+      "items": {
+        "$ref": "#/$defs/Flag"
+      },
+      "title": "Flags",
+      "type": "array"
+    },
+    "history": {
+      "items": {
+        "$ref": "#/$defs/DecisionRun"
+      },
+      "title": "History",
+      "type": "array"
+    },
+    "reviews": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ReviewOutcome"
+      },
+      "title": "Reviews",
+      "type": "array"
+    },
+    "rules": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/CitedRule"
+      },
+      "title": "Rules",
+      "type": "array"
+    },
+    "run": {
+      "$ref": "#/$defs/DecisionRun"
+    },
+    "snapshot": {
+      "$ref": "#/$defs/CombinedExpenseSnapshot"
+    }
+  },
+  "required": [
+    "run",
+    "snapshot",
+    "flags",
+    "history"
+  ],
+  "title": "ReviewDetail",
+  "type": "object"
+}
