@@ -159,3 +159,28 @@ def test_a_job_for_another_snapshot_or_major_version_is_rejected(conn):
         handle_investigate(conn, ScriptedClient(), RULES, job(run, snapshot_id=str(uuid4())))
     with pytest.raises(Exception):
         handle_investigate(conn, ScriptedClient(), RULES, job(run, contract_version="2.0.0"))
+
+
+def test_a_reconcile_hook_rewrites_the_route_before_it_is_saved(conn):
+    from flag_it.contracts.enums import ReviewFinal
+    from flag_it.decide.agent.guardrails import GuardrailResult
+    from flag_it.pipeline.reconcile import reconcile
+
+    db_ex.save_example_decision(conn)  # an earlier run, flagged
+    second = ex.decision_run(
+        decision_id=uuid4(), snapshot_id=uuid4(), route=None, decided_by=None, trigger="late_receipt",
+        replaces_decision_id=ex.DECISION_ID,
+    )
+    records.save_snapshot(conn, db_ex.snapshot(snapshot_id=second.snapshot_id))
+    records.save_decision_run(conn, second)
+
+    def conflict_rule(run, result):
+        route, by, reasons = reconcile(result.route, result.decided_by, result.escalation_reasons, ReviewFinal.APPROVE)
+        return GuardrailResult(route, by, reasons, result.flags)
+
+    client = ScriptedClient(submit(verdict("OSU-GEN-06a", "pass", 0.9), verdict("OSU-PRH-09a", "fail", 0.8, POLICY, FIELD)))
+    decided = handle_investigate(conn, client, RULES, job(second), reconcile=conflict_rule)
+    assert (decided.route, decided.decided_by, decided.escalation_reasons) == (
+        Route.HUMAN_REVIEW, DecidedBy.RERUN, ("review_conflict",))
+    assert records.load_decision_run(conn, second.decision_id).route is Route.HUMAN_REVIEW
+    assert [f.check_id for f in records.load_flags(conn, second.decision_id)] == ["OSU-PRH-09a"]

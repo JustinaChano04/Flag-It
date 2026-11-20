@@ -12,10 +12,10 @@ from uuid import UUID
 from arq.worker import Retry
 
 from flag_it.contracts.enums import RunTrigger
-from flag_it.contracts.jobs import DecideJob, UnderstandJob, load_job
+from flag_it.contracts.jobs import UnderstandJob, load_job
 from flag_it.db import records
 from flag_it.db.connection import Conn
-from flag_it.pipeline.jobs import DECIDE, JobSpec, job_id_decide
+from flag_it.pipeline.jobs import JobSpec, decide_spec
 from flag_it.understand.anomaly import AnomalyConfig
 from flag_it.understand.categorize import MccLookup
 from flag_it.understand.stage import understand
@@ -29,10 +29,6 @@ class TransactionNotReady(Retry):
     def __init__(self, txn_id: UUID) -> None:
         super().__init__(defer=NOT_READY_DEFER)
         self.txn_id = txn_id
-
-
-def decide_spec(txn_id: UUID, trigger: RunTrigger, after: UUID | None = None) -> JobSpec:
-    return JobSpec(DECIDE, DecideJob(txn_id=txn_id, trigger=trigger).model_dump(mode="json"), job_id_decide(txn_id, trigger, after))
 
 
 def handle_understand(
