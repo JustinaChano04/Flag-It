@@ -1,8 +1,8 @@
 """The read_receipt job: read one uploaded receipt, verify it against its transaction, save the result.
 
-Plan 21 registers handle_read_receipt under JOB_NAME and runs it from the queue, and starts a new
-decision run after a receipt is read. The handler is safe to run twice: a repeat returns the saved
-extraction, so the caller can still start that run after a crash.
+Plan 21 registers handle_read_receipt under JOB_NAME and runs it from the queue. After a receipt is read,
+the worker calls decide_after_receipt to queue a new decision run. The handler is safe to run twice: a
+repeat returns the saved extraction, so the caller can still queue that run after a crash.
 
 The upload queues the job before its transaction commits, so a worker can see the job first.
 ReceiptNotReady is Arq's Retry: Arq runs the job again after NOT_READY_DEFER seconds, up to the
@@ -19,7 +19,9 @@ from psycopg.errors import UniqueViolation
 from flag_it.contracts.jobs import ReadReceiptJob, load_job
 from flag_it.contracts.understand import ReceiptExtraction
 from flag_it.db import records
+from flag_it.contracts.enums import RunTrigger
 from flag_it.db.connection import Conn
+from flag_it.pipeline.jobs import JobSpec, decide_spec
 from flag_it.understand.receipts.matching import MatchConfig, match
 from flag_it.understand.receipts.reader import Reading, ReceiptReader, UnreadableFile, to_fields
 from flag_it.understand.receipts.store import ReceiptStore
@@ -74,3 +76,17 @@ def handle_read_receipt(
     except UniqueViolation:  # the same job ran twice at once: keep the one already saved
         return records.load_receipt_extraction(conn, job.receipt_id, reader.model_tag)
     return extraction
+
+
+def decide_after_receipt(conn: Conn, extraction: ReceiptExtraction) -> tuple[JobSpec, ...]:
+    """The decide job to queue after a receipt is read: a late_receipt rerun when the transaction already
+    has a current run whose snapshot lacks this receipt. With no run yet, the initial run picks the
+    receipt up itself. If the extraction commits after a run built its snapshot, the lost_receipts sweep
+    finds it."""
+    current = records.load_current_decision(conn, extraction.txn_id)
+    if current is None:
+        return ()
+    have = records.load_snapshot(conn, current.snapshot_id).payload.receipt
+    if have is not None and have.receipt_id == extraction.receipt_id:
+        return ()
+    return (decide_spec(extraction.txn_id, RunTrigger.LATE_RECEIPT, current.decision_id),)

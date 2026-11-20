@@ -23,6 +23,16 @@ RULES = load_rules()
 READER = ex.receipt().reader_model
 
 
+class RecordingQueue:
+    """A StageQueue that keeps what it was given."""
+
+    def __init__(self):
+        self.specs = []
+
+    def enqueue(self, spec) -> None:
+        self.specs.append(spec)
+
+
 @dataclass(frozen=True)
 class FakeScreener:
     p: float = 1.0
