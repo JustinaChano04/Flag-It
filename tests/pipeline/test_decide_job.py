@@ -175,3 +175,20 @@ def test_a_concurrent_initial_job_that_loses_the_race_returns_nothing(conn, monk
 def test_a_job_from_another_major_version_is_rejected(conn):
     with pytest.raises(ValueError):
         handle_decide(conn, context(), {**payload(), "contract_version": "2.0.0"}, now=NOW)
+
+
+def test_a_duplicate_key_that_is_not_a_lost_race_is_raised(conn, monkeypatch):
+    from psycopg.errors import UniqueViolation
+
+    save_results(conn)
+    real = decide_job.run_rule_checks
+
+    def two_flags_for_one_check(*args, **kwargs):
+        outcome = real(*args, **kwargs)
+        return type(outcome)(
+            flags=outcome.flags + outcome.flags[:1], gates=outcome.gates, skipped=outcome.skipped
+        )
+
+    monkeypatch.setattr(decide_job, "run_rule_checks", two_flags_for_one_check)
+    with pytest.raises(UniqueViolation):
+        handle_decide(conn, context(Controls(limit=FOUND), p=0.1), payload(), now=NOW)

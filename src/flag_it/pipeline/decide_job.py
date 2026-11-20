@@ -144,5 +144,14 @@ def handle_decide(conn: Conn, ctx: DecideContext, payload: Mapping[str, Any], *,
             return _decide(conn, ctx, job, current, now)
     except UniqueViolation:
         # Two jobs for one transaction passed the check above together; the other one's run stands.
+        # Any other duplicate key is a real failure, so confirm the other run exists.
+        if current is None:
+            row = conn.execute("SELECT 1 FROM decision_run WHERE txn_id = %s", (job.txn_id,)).fetchone()
+        else:
+            row = conn.execute(
+                "SELECT 1 FROM decision_run WHERE replaces_decision_id = %s", (current.decision_id,)
+            ).fetchone()
+        if row is None:
+            raise
         log.info("decide %s for %s lost the race to another run", job.trigger.value, job.txn_id)
         return ()
