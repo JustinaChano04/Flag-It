@@ -20,7 +20,7 @@ from uuid import uuid4
 
 from psycopg.errors import UniqueViolation
 
-from flag_it.contracts.decide import DecisionRun, Flag
+from flag_it.contracts.decide import DecisionRun
 from flag_it.contracts.enums import CheckMethod, DecidedBy, FlagResult, FlagSource, Route, RunTrigger
 from flag_it.contracts.jobs import DecideJob, load_job
 from flag_it.contracts.rules import RuleSet
