@@ -104,3 +104,18 @@ def test_a_fresh_routeless_run_is_left_alone(conn):
     decide(conn, p=1.0, calendar=NO_CYCLES)
     assert stuck_runs(conn, REAL_NOW(), SETTINGS) == ()
     assert records.load_current_decision(conn, ex.TXN_ID).route is None
+
+
+def test_a_sweep_returns_at_most_the_limit_oldest_first(conn):
+    from uuid import uuid4
+
+    save_results(conn)
+    for n in range(2):  # two more old transactions: three in all
+        raw_id, txn_id = uuid4(), uuid4()
+        records.save_raw_transaction(conn, ex.raw_from_file(raw_id=raw_id, source_line_no=100 + n))
+        records.save_txn(conn, txn_id, raw_id)
+        records.save_normalized_transaction(conn, ex.normalized(txn_id=txn_id, raw_id=raw_id))
+    assert len(unrun_transactions(conn, LATER(), SETTINGS)) == 3
+    first = unrun_transactions(conn, LATER(), SETTINGS, limit=1)
+    assert ids(first) == [job_id_understand(ex.TXN_ID)]  # the oldest row
+    assert len(unrun_transactions(conn, LATER(), SETTINGS, limit=2)) == 2

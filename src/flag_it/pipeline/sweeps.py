@@ -19,6 +19,7 @@ from flag_it.db import records
 from flag_it.db.connection import Conn
 from flag_it.pipeline.jobs import JobSpec, decide_spec, read_receipt_spec, understand_spec
 
+SWEEP_LIMIT = 500  # jobs per sweep run, oldest first, so a backlog drains over several runs
 _CURRENT = "NOT EXISTS (SELECT 1 FROM decision_run later WHERE later.replaces_decision_id = r.decision_id)"
 
 
@@ -26,42 +27,47 @@ def _grace(now: datetime, settings: PipelineSettings) -> datetime:
     return now - timedelta(minutes=settings.sweep_grace_minutes)
 
 
-def due_reruns(conn: Conn, now: datetime, settings: PipelineSettings) -> tuple[JobSpec, ...]:
+def due_reruns(
+    conn: Conn, now: datetime, settings: PipelineSettings, limit: int = SWEEP_LIMIT
+) -> tuple[JobSpec, ...]:
     """A current run has a pending check whose deadline passed: one deadline decide job each."""
     rows = conn.execute(
-        f"SELECT DISTINCT r.txn_id, r.decision_id FROM decision_run r JOIN flag f ON f.decision_id = r.decision_id"
-        f" WHERE f.result = 'pending' AND f.due_at <= %s AND {_CURRENT} ORDER BY r.decision_id",
-        (_grace(now, settings),),
+        f"SELECT r.txn_id, r.decision_id FROM decision_run r JOIN flag f ON f.decision_id = r.decision_id"
+        f" WHERE f.result = 'pending' AND f.due_at <= %s AND {_CURRENT}"
+        " GROUP BY r.txn_id, r.decision_id ORDER BY min(f.due_at), r.decision_id LIMIT %s",
+        (_grace(now, settings), limit),
     ).fetchall()
     return tuple(decide_spec(r["txn_id"], RunTrigger.DEADLINE, r["decision_id"]) for r in rows)
 
 
-def unrun_transactions(conn: Conn, now: datetime, settings: PipelineSettings) -> tuple[JobSpec, ...]:
+def unrun_transactions(
+    conn: Conn, now: datetime, settings: PipelineSettings, limit: int = SWEEP_LIMIT
+) -> tuple[JobSpec, ...]:
     """Accepted transactions older than the grace with no decision run: one understand job each."""
     rows = conn.execute(
         "SELECT t.txn_id FROM txn t JOIN normalized_transaction n ON n.txn_id = t.txn_id"
         " WHERE t.created_at <= %s AND NOT EXISTS (SELECT 1 FROM decision_run r WHERE r.txn_id = t.txn_id)"
-        " GROUP BY t.txn_id ORDER BY t.txn_id",
-        (_grace(now, settings),),
+        " GROUP BY t.txn_id ORDER BY t.created_at, t.txn_id LIMIT %s",
+        (_grace(now, settings), limit),
     ).fetchall()
     return tuple(understand_spec(r["txn_id"]) for r in rows)
 
 
 def unread_receipts(
-    conn: Conn, now: datetime, settings: PipelineSettings, reader_model: str
+    conn: Conn, now: datetime, settings: PipelineSettings, reader_model: str, limit: int = SWEEP_LIMIT
 ) -> tuple[JobSpec, ...]:
     """Receipt files older than the grace that this reader model has not read: one read_receipt job each."""
     rows = conn.execute(
         "SELECT f.receipt_id, f.txn_id FROM receipt_file f WHERE f.uploaded_at <= %s"
         " AND NOT EXISTS (SELECT 1 FROM receipt_extraction e WHERE e.receipt_id = f.receipt_id AND e.reader_model = %s)"
-        " ORDER BY f.receipt_id",
-        (_grace(now, settings), reader_model),
+        " ORDER BY f.uploaded_at, f.receipt_id LIMIT %s",
+        (_grace(now, settings), reader_model, limit),
     ).fetchall()
     return tuple(read_receipt_spec(r["receipt_id"], r["txn_id"]) for r in rows)
 
 
 def lost_receipts(
-    conn: Conn, now: datetime, settings: PipelineSettings, reader_model: str
+    conn: Conn, now: datetime, settings: PipelineSettings, reader_model: str, limit: int = SWEEP_LIMIT
 ) -> tuple[JobSpec, ...]:
     """Current runs whose snapshot receipt is not the transaction's latest extraction (the extraction
     committed after the run built its snapshot): one late_receipt decide job each."""
@@ -78,9 +84,10 @@ def lost_receipts(
         WHERE {_CURRENT}
           AND latest.created_at <= %s
           AND latest.receipt_id::text IS DISTINCT FROM s.payload -> 'receipt' ->> 'receipt_id'
-        ORDER BY r.decision_id
+        ORDER BY latest.created_at, r.decision_id
+        LIMIT %s
         """,
-        (reader_model, _grace(now, settings)),
+        (reader_model, _grace(now, settings), limit),
     ).fetchall()
     return tuple(decide_spec(r["txn_id"], RunTrigger.LATE_RECEIPT, r["decision_id"]) for r in rows)
 
