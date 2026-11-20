@@ -140,3 +140,13 @@ def test_one_transaction_is_driven_from_understand_to_a_route(conn):
             asyncio.run(functions[spec.name](ctx, spec.payload))
     run = records.load_current_decision(conn, ex.TXN_ID)
     assert (run.route, run.decided_by) == (Route.AGENT_APPROVE, DecidedBy.AGENT)
+
+
+def test_startup_and_the_redis_settings_share_one_default(monkeypatch):
+    from flag_it.workers.queue import DEFAULT_REDIS_URL
+
+    monkeypatch.delenv("FLAG_IT_REDIS_URL", raising=False)
+    ctx = {}
+    asyncio.run(worker.startup(ctx))  # used to raise KeyError
+    assert ctx["queue"].redis_url == DEFAULT_REDIS_URL
+    assert WorkerSettings.redis_settings.host == "localhost" and WorkerSettings.redis_settings.port == 6379

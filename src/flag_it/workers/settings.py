@@ -21,7 +21,6 @@ FLAG_IT_OLLAMA_URL, FLAG_IT_READER_MODEL, the receipt store's, ANTHROPIC_API_KEY
 import asyncio
 import dataclasses
 import logging
-import os
 from collections.abc import Callable, Sequence
 from datetime import datetime, timezone
 from typing import Any
@@ -53,7 +52,7 @@ from flag_it.understand.receipts.matching import load_match_config
 from flag_it.understand.receipts.reader import reader_from_env
 from flag_it.understand.receipts.store import store_from_env
 from flag_it.understand.receipts.worker import decide_after_receipt, handle_read_receipt
-from flag_it.workers.queue import REDIS_URL_ENV, ArqStageQueue
+from flag_it.workers.queue import ArqStageQueue, worker_redis_url
 
 log = logging.getLogger(__name__)
 
@@ -183,7 +182,7 @@ async def startup(ctx: Ctx) -> None:
     lookup, anomaly_config, reader = load_lookup(RULES), load_anomaly_config(), reader_from_env()
     ctx.update(
         connect=connect,
-        queue=ArqStageQueue(os.environ[REDIS_URL_ENV]),
+        queue=ArqStageQueue(worker_redis_url()),
         rules=RULES,
         max_tries=PIPELINE.max_tries,
         lookup=lookup,
@@ -231,4 +230,4 @@ class WorkerSettings:
     on_shutdown = shutdown
     max_tries = PIPELINE.max_tries
     keep_result = KEEP_RESULT
-    redis_settings = RedisSettings.from_dsn(os.environ.get(REDIS_URL_ENV, "redis://localhost:6379"))
+    redis_settings = RedisSettings.from_dsn(worker_redis_url())

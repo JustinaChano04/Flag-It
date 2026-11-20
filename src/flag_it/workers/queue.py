@@ -22,6 +22,12 @@ from arq.connections import ArqRedis, RedisSettings
 from flag_it.pipeline.jobs import JobSpec, StageQueue
 
 REDIS_URL_ENV = "FLAG_IT_REDIS_URL"
+DEFAULT_REDIS_URL = "redis://localhost:6379/0"  # the worker's default; intake uses no queue when the setting is unset
+
+
+def worker_redis_url() -> str:
+    """The Redis URL the worker connects to, for both its job pool and the queue it enqueues on."""
+    return os.environ.get(REDIS_URL_ENV) or DEFAULT_REDIS_URL
 
 log = logging.getLogger(__name__)
 
