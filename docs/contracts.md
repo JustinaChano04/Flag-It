@@ -525,11 +525,13 @@ There is no login yet: `reviewer` is the name the client sends. The server saves
 
 ### Queue jobs
 
-Only the receipt reader and the investigation agent use the queue (Redis and Arq). Every job carries IDs only, plus the contract version.
+The orchestrator, the receipt reader, and the investigation agent use the queue (Redis and Arq). Every job carries IDs only, plus the contract version. Every job has a deterministic job ID, so a second enqueue of the same job is ignored.
 
 | Job | Payload | Worker does | If it keeps failing |
 |---|---|---|---|
 | `read_receipt` | `{receipt_id, txn_id, contract_version}` | Reads the file, writes `receipt_extraction`, then starts a new decision run. | The transaction keeps deciding without a receipt. The failure is logged. |
+| `understand` | `{txn_id, contract_version}` | Categorizes the transaction and scores its anomaly, then queues the first `decide` job. | The sweep for accepted transactions with no run queues it again. |
+| `decide` | `{txn_id, trigger, contract_version}`. `trigger` is `initial`, `late_receipt`, or `deadline`. | Builds a snapshot, runs the rule checks, screens, and saves a decision run. Queues `investigate` when the run needs the agent. | A repeat is a no-op. The sweeps queue the reruns they find. |
 | `investigate` | `{decision_id, snapshot_id, check_ids, contract_version}`. `check_ids` holds the `llm` check IDs for the transaction's category plus each code check that is `unclear` in the run. | Loads the snapshot, runs the agent, applies the guardrails, writes verdicts, flags, and the route. | The run goes to `human_review` with reason `agent_failed`. |
 
 Workers reject a job whose major contract version differs from their own.

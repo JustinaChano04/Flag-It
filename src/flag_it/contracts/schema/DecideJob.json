@@ -1,0 +1,35 @@
+{
+  "$defs": {
+    "RunTrigger": {
+      "enum": [
+        "initial",
+        "late_receipt",
+        "deadline"
+      ],
+      "title": "RunTrigger",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "contract_version": {
+      "default": "1.2.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Version",
+      "type": "string"
+    },
+    "trigger": {
+      "$ref": "#/$defs/RunTrigger"
+    },
+    "txn_id": {
+      "format": "uuid",
+      "title": "Txn Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "txn_id",
+    "trigger"
+  ],
+  "title": "DecideJob",
+  "type": "object"
+}
