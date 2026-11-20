@@ -9,7 +9,7 @@ from pydantic import ValidationError
 import hashlib
 
 from flag_it.contracts.enums import CheckMethod
-from flag_it.contracts.rules import DEFAULT_RULES_PATH, MissingAgentSettings, UnknownParamError, default_rules_path, load_rules
+from flag_it.contracts.rules import DEFAULT_RULES_PATH, MissingAgentSettings, MissingPipelineSettings, UnknownParamError, default_rules_path, load_rules
 
 
 @pytest.fixture(scope="module")
@@ -187,3 +187,29 @@ def test_bad_agent_settings_are_rejected(tmp_path, bad):
 def test_the_real_rules_file_has_agent_settings():
     settings = load_rules().agent_settings()
     assert (settings.min_confidence, settings.max_tool_calls) == (0.5, 6)
+
+
+def test_the_real_rules_file_has_pipeline_settings():
+    settings = load_rules().pipeline_settings()
+    assert (settings.max_tries, settings.stuck_after_minutes, settings.sweep_grace_minutes) == (5, 30, 5)
+
+
+def test_a_file_without_pipeline_settings_fails_loudly_when_they_are_needed(tmp_path):
+    rules = load_rules(_write(tmp_path, _minimal()))
+    assert rules.pipeline is None
+    with pytest.raises(MissingPipelineSettings):
+        rules.pipeline_settings()
+
+
+def test_max_tries_defaults_and_bad_pipeline_settings_are_rejected(tmp_path):
+    data = _minimal()
+    data["pipeline"] = {"stuck_after_minutes": 10, "sweep_grace_minutes": 2}
+    assert load_rules(_write(tmp_path, data)).pipeline_settings().max_tries == 5
+    bads = (
+        {"stuck_after_minutes": 0, "sweep_grace_minutes": 2},
+        {"stuck_after_minutes": 10, "sweep_grace_minutes": 2, "extra": 1},
+    )
+    for bad in bads:
+        data["pipeline"] = bad
+        with pytest.raises(ValidationError):
+            load_rules(_write(tmp_path, data))
