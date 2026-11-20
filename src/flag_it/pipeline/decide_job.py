@@ -114,7 +114,7 @@ def _decide(
         replaces_decision_id=current.decision_id if current else None,
         screener=screened,
         escalation_reasons=decided[2] if decided else (),
-        rules_version=stamp(ctx.rules, ctx.deployment, ctx.calendar),
+        rules_version=stamp(ctx.rules, ctx.deployment, ctx.calendar, ctx.checkers, ctx.unsupported),
         created_at=now,
     )
     records.save_decision_run(conn, run)

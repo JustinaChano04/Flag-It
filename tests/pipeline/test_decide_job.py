@@ -158,7 +158,7 @@ def test_the_run_records_the_stamp(conn):
     save_results(conn)
     ctx = context(p=0.1)
     handle_decide(conn, ctx, payload(), now=NOW)
-    assert current(conn).rules_version == stamp(ctx.rules, ctx.deployment, ctx.calendar)
+    assert current(conn).rules_version == stamp(ctx.rules, ctx.deployment, ctx.calendar, ctx.checkers, ctx.unsupported)
 
 
 def test_a_concurrent_initial_job_that_loses_the_race_returns_nothing(conn, monkeypatch):
@@ -192,3 +192,13 @@ def test_a_duplicate_key_that_is_not_a_lost_race_is_raised(conn, monkeypatch):
     monkeypatch.setattr(decide_job, "run_rule_checks", two_flags_for_one_check)
     with pytest.raises(UniqueViolation):
         handle_decide(conn, context(Controls(limit=FOUND), p=0.1), payload(), now=NOW)
+
+
+def test_the_stamp_follows_the_checkers_the_context_carries():
+    import dataclasses
+
+    one = context(Controls())
+    other = dataclasses.replace(one, checkers={**one.checkers, "OSU-GEN-04b": lambda ctx: None})
+    assert stamp(one.rules, one.deployment, one.calendar, one.checkers, one.unsupported) != stamp(
+        other.rules, other.deployment, other.calendar, other.checkers, other.unsupported
+    )
