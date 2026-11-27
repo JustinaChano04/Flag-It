@@ -6,9 +6,9 @@ export type IntakeStatus = "accepted" | "duplicate" | "invalid";
 export type CategoryMethod = "lookup" | "model";
 export type LineType = "item" | "tax" | "tip" | "fee" | "room" | "other";
 export type MatchStatus = "matched" | "mismatch" | "unmatched";
+export type RunTrigger = "initial" | "late_receipt" | "deadline";
 export type DecidedBy = "rules" | "screener" | "agent" | "guardrails" | "rerun";
 export type Route = "flag" | "auto_approve" | "agent_approve" | "agent_flag" | "human_review";
-export type RunTrigger = "initial" | "late_receipt" | "deadline";
 export type FlagResult = "fail" | "violation" | "unclear" | "pending" | "not_evaluated";
 export type Severity = "prohibited" | "conditional" | "documentation" | "guidance";
 export type FlagSource = "code" | "llm";
@@ -21,6 +21,7 @@ export interface Contracts {
   BatchResponse?: BatchResponse;
   CategoryResult?: CategoryResult;
   CombinedExpenseSnapshot?: CombinedExpenseSnapshot;
+  DecideJob?: DecideJob;
   DecisionHistory?: DecisionHistory;
   DecisionRun?: DecisionRun;
   Flag?: Flag;
@@ -37,6 +38,7 @@ export interface Contracts {
   ReviewQueue?: ReviewQueue;
   TransactionIn?: TransactionIn;
   TransactionView?: TransactionView;
+  UnderstandJob?: UnderstandJob;
 }
 export interface AgentOutput {
   /**
@@ -171,6 +173,11 @@ export interface SourceVersions {
   categorizer: string;
   normalizer: string;
   reader_model?: string | null;
+}
+export interface DecideJob {
+  contract_version?: string;
+  trigger: RunTrigger;
+  txn_id: string;
 }
 /**
  * GET /transactions/{txn_id}/decisions, newest first.
@@ -364,5 +371,9 @@ export interface TransactionView {
   decision?: DecisionRun | null;
   flags?: Flag[];
   transaction?: NormalizedTransaction | null;
+  txn_id: string;
+}
+export interface UnderstandJob {
+  contract_version?: string;
   txn_id: string;
 }

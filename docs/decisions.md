@@ -8,6 +8,24 @@ How to add an entry:
 - Keep each entry to a few lines.
 - If a later decision changes an earlier one, say so in both entries.
 
+## 2026-11-20: Orchestrator: chained jobs, handlers that return jobs, and sweeps in the worker
+
+- **Decided:**
+  - Every stage is a queue job: `understand`, `decide`, `investigate`, `read_receipt`. A stage returns the next jobs (`JobSpec`) instead of enqueuing them. The worker opens a connection, runs the handler, commits, and only then enqueues what it returned, so a job never starts before the rows it needs are visible. `understand` and `decide` are new jobs (`UnderstandJob`, `DecideJob`), so `CONTRACT_VERSION` is 1.2.0.
+  - Every job has a deterministic job ID (`decide:<txn>:<trigger>:<replaced run>`), and every handler is a no-op on a repeat. Arq ignores a repeated enqueue until the result expires, so `keep_result` is 60 seconds and the handlers carry the real guarantee. `decide` also checks that there is work (no run yet, a receipt the current snapshot lacks, a pending flag past `due_at`) and saves its snapshot, run and flags in one savepoint, so a concurrent duplicate leaves nothing behind.
+  - The sweeps (due reruns, transactions with no run, unread receipts, receipts newer than the current snapshot, stuck runs) are Arq cron jobs in the same worker, every minute. They ignore work younger than `pipeline.sweep_grace_minutes`. Timings and `max_tries` are the `pipeline:` block of the rules YAML.
+  - A failed `investigate` is retried every 30 seconds up to `max_tries`; on the last try a hook ends the run in `human_review` with `agent_failed`. The stuck-run sweep ends a run with no route after `pipeline.stuck_after_minutes`, for a worker that crashed.
+  - The review-conflict rule (contracts.md step 9) is applied in `decide` and, through an optional `reconcile` argument, in `handle_investigate`.
+  - The run's `rules_version` is now a stamp: the rules version plus 8 characters hashing the deployment inputs, the checker registry and the billing calendar.
+  - With `FLAG_IT_REDIS_URL` unset, intake uses a no-op queue and logs a warning at startup, so the existing intake tests and a laptop without Redis still work. Nothing runs after a transaction is accepted until Redis and a worker exist, and the sweeps pick the transactions up then.
+  - Still open: an agent verdict on a code check that was `unclear` does not create a flag, because flags are one per run and check (`flag_one_per_check`). The unclear code flag stays as it is.
+- **Why:** Returning jobs keeps handlers testable without Redis and avoids the race of enqueuing before the commit. One job per stage means a failure repeats only that stage. Sweeps in the worker need no second scheduler.
+- **Rejected:**
+  - One pipeline job per transaction: one failure repeats every stage, and it is harder to see which stage stopped.
+  - OS cron for the sweeps: another process and another place to configure.
+  - Handlers that enqueue directly: a job could start before the commit.
+  - Retrying every kind of job on any exception: Arq retries only on `Retry`; the sweeps already catch the others.
+
 ## 2026-11-17: Review app: queue, review rules, a detail endpoint, and no login yet
 
 - **Decided:**

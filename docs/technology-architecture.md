@@ -19,7 +19,7 @@ How to read them:
 
 - **Boxes** are containers. The nodes inside are the steps from the logical view.
 - **Pink** nodes are models, including the LLM judge. **Green** nodes are plain code.
-- Only the receipt reader and the investigation agent go through the queue. Every other step runs directly in the pipeline container.
+- Every stage runs as a job on the Arq queue: `understand`, `decide`, `investigate`, and `read_receipt`. A stage does its work in one database transaction and returns the next jobs, and the worker queues them after it commits. Sweeps, which are Arq cron jobs in the same worker, find work that was lost or is now due.
 
 ### 1a. Intake and receipt reading (steps 1-6)
 
@@ -34,7 +34,7 @@ flowchart LR
         api["api<br/>FastAPI<br/>single + batch endpoints"]
     end
 
-    redis[("Redis<br/>Arq queue: read_receipt")]
+    redis[("Redis<br/>Arq queue: understand, read_receipt")]
 
     subgraph WR["worker-receipt (GPU machine)"]
         reader["Receipt reader<br/>VLM, image in, JSON out"]
@@ -51,6 +51,7 @@ flowchart LR
     api -->|"2 save transaction"| pg
     api -->|"2 store receipt"| minio
     api -->|"3 enqueue read_receipt"| redis
+    api -->|"3 enqueue understand"| redis
     redis -->|"4 job"| reader
     reader <-->|"5 fetch receipt"| minio
     reader -->|"6 extracted fields"| pg
@@ -73,15 +74,16 @@ A rendered copy is at [img/technology-1a-intake.svg](img/technology-1a-intake.sv
 
 ### 1b. Pipeline (steps 7-16)
 
-Every step in the pipeline container runs as one batch of function calls. There is no queue between the steps.
+The pipeline container is the Arq worker. The steps run as two chained jobs: `understand` (steps 7-12) and `decide` (steps 13-16). Each job returns the next job, and the worker queues it after the commit. Every job has a deterministic job ID, so a repeated job is ignored or does nothing.
 
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "12px"}}}%%
 flowchart LR
-    pgin[("Postgres<br/>ready rows, history")]
+    redisin[("Redis<br/>Arq queue: understand, decide")]
+    pgin[("Postgres<br/>transactions, history")]
     minio[("MinIO<br/>model artifacts")]
 
-    subgraph PL["pipeline container (Python)"]
+    subgraph PL["pipeline container: Arq worker (Python)"]
         norm["Normalization<br/>Pydantic, pure functions"]
         match["Receipt matching<br/>join receipt to transaction"]
         feat["compute_features<br/>pandas + SQL history"]
@@ -94,7 +96,7 @@ flowchart LR
     pgout[("Postgres<br/>decision records")]
     redis[("Redis<br/>Arq queue: investigate")]
 
-    pgin -->|"7 claim ready rows"| norm
+    redisin -->|"7 understand job"| norm
     norm -->|"8 clean record"| match
     match -->|"9 matched record"| feat
     pgin <-->|"10 history, as-of SQL"| feat
@@ -107,7 +109,7 @@ flowchart LR
     rules -->|"13 hard rule broken: flag"| pgout
     rules -->|"14 passes"| screen
     screen -->|"15 low risk: auto-approve"| pgout
-    screen -->|"16 needs judgment"| redis
+    screen -->|"16 needs judgment: investigate job"| redis
 
     classDef actor fill:#FFE4B5,stroke:#333,stroke-width:2px,color:black
     classDef app fill:#90EE90,stroke:#333,stroke-width:2px,color:darkgreen
@@ -119,7 +121,7 @@ flowchart LR
     class norm,match,feat,rules app
     class cat,anom,screen model
     class pgin,pgout,minio store
-    class redis queue
+    class redis,redisin queue
 ```
 
 A rendered copy is at [img/technology-1b-pipeline.svg](img/technology-1b-pipeline.svg).
@@ -169,19 +171,19 @@ A rendered copy is at [img/technology-1c-investigation.svg](img/technology-1c-in
 | Step | What happens |
 |---|---|
 | 1 | A reviewer submits through the UI, or a batch client sends transactions to the API. |
-| 2–3 | The API saves the transaction in Postgres and the receipt in MinIO, then queues a job to read the receipt. |
+| 2–3 | The API saves the transaction in Postgres and the receipt in MinIO, then queues a job to understand the transaction and a job to read the receipt. |
 | 4–6 | The GPU worker fetches the receipt, runs the receipt reader, and saves the extracted fields to Postgres. |
-| 7–9 | The pipeline picks up rows that are ready, normalizes them, and matches each receipt to its transaction. |
+| 7–9 | The worker picks up the `understand` job, normalizes the row, and matches each receipt to its transaction. |
 | 10 | Features are computed. Each cardholder's history comes from SQL, using only data from before the transaction. |
 | 11–12 | The categorizer and anomaly detector (loaded from MinIO) score the transaction. Their results make up the combined expense. |
 | 13–14 | Rule checks run. A broken hard rule is flagged. Otherwise the transaction moves on. |
-| 15–16 | The risk screener approves low-risk transactions and queues the rest for investigation. |
+| 15–16 | The `decide` job's risk screener approves low-risk transactions and queues the rest for investigation. A receipt that arrives later, or a passed deadline, queues another `decide` job. |
 | 17–19 | The agent picks up the job, uses its tools to look up history and other data, and asks the hosted LLM. |
 | 20–21 | Guardrails check the agent's proposed decision. If it is confident and cites a rule, it becomes approve or flag. Otherwise it goes to human review. |
 
 ## 2. One transaction, end to end
 
-This diagram shows the same journey in time order. Its three branches are the decision engine's three outcomes. Fast steps run directly; slow ones go through the queue.
+This diagram shows the same journey in time order. Its three branches are the decision engine's three outcomes. Every stage is a job on the queue; each one queues the next after it commits.
 
 ```mermaid
 %%{init: {"flowchart": {"useMaxWidth": false}, "themeVariables": {"fontSize": "12px"}}}%%
@@ -192,20 +194,25 @@ sequenceDiagram
     participant DB as Postgres
     participant Q as Redis
     participant RW as worker-receipt (GPU)
-    participant P as pipeline
+    participant P as pipeline (Arq worker)
     participant LW as worker-llm
     participant LLM as Hosted LLM API
     actor R as Reviewer
 
     U->>API: transaction + receipt
     API->>DB: save transaction, status = ingested
+    API->>Q: enqueue understand
     API->>Q: enqueue read_receipt
     Q->>RW: job
     RW->>DB: extracted fields
 
-    Note over P,DB: Fast stages run inline as one batch
-    P->>DB: claim ready rows, load history (as-of SQL)
-    P->>P: normalize, match receipt, features,<br/>categorizer, anomaly, rule checks, risk screener
+    Note over P,DB: understand and decide are chained jobs
+    Q->>P: understand job
+    P->>DB: load history (as-of SQL), save category and anomaly
+    P->>Q: enqueue decide (after commit)
+    Q->>P: decide job
+    P->>P: snapshot, rule checks, risk screener
+    Note over Q,P: cron sweeps requeue lost jobs, late receipts,<br/>and reruns whose deadline has passed
 
     alt hard rule broken
         P->>DB: decision = flag, cites rule
@@ -260,7 +267,7 @@ flowchart TB
         end
         subgraph MINI["🖥️ Mac mini: M4, 16 GB, always on"]
             direction TB
-            svc["<b>🐳 Docker Compose</b><br/><br/><b>review-ui</b>: React UI<br/><b>api</b>: FastAPI<br/><br/><b>pipeline</b>:<br/>matching, features<br/>categorizer<br/>anomaly detector<br/>rule checks<br/>risk screener<br/><br/><b>worker-receipt</b>:<br/>calls the reader<br/><b>worker-llm</b>:<br/>agent, tools, guardrails<br/><b>scheduler</b>:<br/>nightly drift report"]
+            svc["<b>🐳 Docker Compose</b><br/><br/><b>review-ui</b>: React UI<br/><b>api</b>: FastAPI<br/><br/><b>pipeline</b>: Arq worker,<br/>stage jobs and sweeps<br/>matching, features<br/>categorizer<br/>anomaly detector<br/>rule checks<br/>risk screener<br/><br/><b>worker-receipt</b>:<br/>calls the reader<br/><b>worker-llm</b>:<br/>agent, tools, guardrails<br/><b>scheduler</b>:<br/>nightly drift report"]
             pg[("🛢️ <b>postgres</b> + <b>redis</b><br/>internal SSD")]
             minio[("🪣 <b>minio</b><br/>💾 WD external drive")]
             jobs["⚙️ Batch job<br/>launcher<br/>SSH + rsync"]

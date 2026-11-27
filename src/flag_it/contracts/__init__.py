@@ -14,7 +14,7 @@ from flag_it.contracts.api import (
 )
 from flag_it.contracts.common import CONTRACT_VERSION, ContractModel, InputModel, RecordModel
 from flag_it.contracts.decide import AgentOutput, DecisionRun, Flag
-from flag_it.contracts.jobs import InvestigateJob, ReadReceiptJob
+from flag_it.contracts.jobs import DecideJob, InvestigateJob, ReadReceiptJob, UnderstandJob
 from flag_it.contracts.review import ReviewOutcome
 from flag_it.contracts.snapshot import CombinedExpenseSnapshot
 from flag_it.contracts.transactions import NormalizedTransaction, RawTransaction
@@ -46,6 +46,8 @@ SCHEMA_MODELS: dict[str, type[ContractModel]] = {
         ReviewDetail,
         ReadReceiptJob,
         InvestigateJob,
+        UnderstandJob,
+        DecideJob,
     )
 }
 

@@ -1,7 +1,7 @@
 {
   "properties": {
     "contract_version": {
-      "default": "1.1.0",
+      "default": "1.2.0",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
       "title": "Contract Version",
       "type": "string"

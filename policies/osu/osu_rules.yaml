@@ -102,6 +102,13 @@ agent:
   min_confidence: 0.5
   max_tool_calls: 6
 
+# Orchestrator settings (plan 21). Operational timings, not policy: they change how the pipeline
+# retries and recovers lost work, never what a rule decides.
+pipeline:
+  max_tries: 5               # tries per queued job before the last-try hook ends an investigation
+  stuck_after_minutes: 30    # a run with no route after this long goes to human_review (agent_failed)
+  sweep_grace_minutes: 5     # sweeps ignore work younger than this, so they don't race the normal path
+
 referenced_documents_not_ingested:  # cited by the PDF but not provided; rules depending on them are incomplete
   - Guidelines for Food and Drink Purchases (AVP Administration & Finance)
   - OSU Travel Policy 3-0201 / Travel 10.01 and the State Travel Reimbursement Act

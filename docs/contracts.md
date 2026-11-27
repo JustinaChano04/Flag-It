@@ -365,7 +365,7 @@ Transactions sent through the intake API also carry `external_id` and `source` (
 | `replaces_decision_id` | The run this one replaces. Empty exactly when `trigger` is `initial`. |
 | `screener` | `{probability, threshold, model_version}`, or empty if the screener was skipped. The threshold is copied from that model version's metadata. A probability below the threshold auto-approves. |
 | `escalation_reasons` | Present exactly when the route is `human_review`. One or more of: `unsure:<check_id>`, `low_confidence:<check_id>`, `citation_unresolved`, `invalid_output`, `agent_failed`, `review_conflict`. |
-| `rules_version` | The rules YAML used for this run: its `policy.version`, a `+`, and the first 12 characters of the file's SHA-256 hash, for example `2026-05+3f9a1c0b7e2d`. It changes whenever the file changes. |
+| `rules_version` | The rules YAML used for this run: its `policy.version`, a `+`, and the first 12 characters of the file's SHA-256 hash, for example `2026-05+3f9a1c0b7e2d`. Then a `+` and 8 more characters hashing what else the run depends on: the deployment's inputs, the checker registry, and the billing calendar. For example `2026-05+3f9a1c0b7e2d+9fa703c0`. It changes whenever the file, the inputs, or the calendar change. |
 | `created_at` | When the run started. |
 
 ### Flag
@@ -525,12 +525,16 @@ There is no login yet: `reviewer` is the name the client sends. The server saves
 
 ### Queue jobs
 
-Only the receipt reader and the investigation agent use the queue (Redis and Arq). Every job carries IDs only, plus the contract version.
+The orchestrator, the receipt reader, and the investigation agent use the queue (Redis and Arq). Every job carries IDs only, plus the contract version. Every job has a deterministic job ID, so a second enqueue of the same job is ignored.
 
 | Job | Payload | Worker does | If it keeps failing |
 |---|---|---|---|
 | `read_receipt` | `{receipt_id, txn_id, contract_version}` | Reads the file, writes `receipt_extraction`, then starts a new decision run. | The transaction keeps deciding without a receipt. The failure is logged. |
+| `understand` | `{txn_id, contract_version}` | Categorizes the transaction and scores its anomaly, then queues the first `decide` job. | The sweep for accepted transactions with no run queues it again. |
+| `decide` | `{txn_id, trigger, contract_version}`. `trigger` is `initial`, `late_receipt`, or `deadline`. | Builds a snapshot, runs the rule checks, screens, and saves a decision run. Queues `investigate` when the run needs the agent. | A repeat is a no-op. The sweeps queue the reruns they find. |
 | `investigate` | `{decision_id, snapshot_id, check_ids, contract_version}`. `check_ids` holds the `llm` check IDs for the transaction's category plus each code check that is `unclear` in the run. | Loads the snapshot, runs the agent, applies the guardrails, writes verdicts, flags, and the route. | The run goes to `human_review` with reason `agent_failed`. |
+
+A stage returns the next jobs instead of queuing them; the worker queues them after it commits. A job ID is deterministic (`understand:<txn>`, `decide:<txn>:<trigger>:<replaced run or none>`, `investigate:<decision>`, `read_receipt:<receipt>`), and a handler that runs twice changes nothing. Sweeps, which are cron jobs in the worker, queue work that was lost or is due: transactions with no run, receipts never read, a current run whose snapshot lacks the newest receipt, and `pending` flags past `due_at`. A run with no route after `pipeline.stuck_after_minutes` is ended in `human_review` with `agent_failed`.
 
 Workers reject a job whose major contract version differs from their own.
 

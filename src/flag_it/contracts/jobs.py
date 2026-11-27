@@ -1,7 +1,7 @@
 """Queue job payloads: IDs only, plus the contract version. See "Queue jobs" in docs/contracts.md.
 
 Idempotency: a worker may receive the same job twice (Arq retries). `receipt_id` identifies a
-read_receipt job and `decision_id` an investigate job. Plan 21 makes the handlers no-ops on a repeat.
+read_receipt job, `decision_id` an investigate job, and `txn_id` an understand job (a decide job adds its trigger). Plan 21 makes the handlers no-ops on a repeat.
 """
 
 from collections.abc import Mapping
@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import Field
 
 from flag_it.contracts.common import CONTRACT_VERSION, CheckId, RecordModel, SemVer, require_version
+from flag_it.contracts.enums import RunTrigger
 
 
 class ReadReceiptJob(RecordModel):
@@ -26,7 +27,18 @@ class InvestigateJob(RecordModel):
     contract_version: SemVer = CONTRACT_VERSION
 
 
-J = TypeVar("J", ReadReceiptJob, InvestigateJob)
+class UnderstandJob(RecordModel):
+    txn_id: UUID
+    contract_version: SemVer = CONTRACT_VERSION
+
+
+class DecideJob(RecordModel):
+    txn_id: UUID
+    trigger: RunTrigger
+    contract_version: SemVer = CONTRACT_VERSION
+
+
+J = TypeVar("J", ReadReceiptJob, InvestigateJob, UnderstandJob, DecideJob)
 
 
 def load_job(model: type[J], data: Mapping[str, Any]) -> J:

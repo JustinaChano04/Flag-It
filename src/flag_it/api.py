@@ -10,9 +10,11 @@ from fastapi import FastAPI
 from flag_it.intake.routes import router as intake_router
 from flag_it.review.routes import router as review_router
 from flag_it.understand.receipts.upload import router as receipts_router
+from flag_it.workers.queue import warn_if_no_queue
 
 
 def create_app() -> FastAPI:
+    warn_if_no_queue()
     app = FastAPI(title="Flag-It")
     app.include_router(intake_router)
     app.include_router(receipts_router)

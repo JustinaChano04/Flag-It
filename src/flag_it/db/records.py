@@ -272,3 +272,16 @@ def load_review_outcomes(conn: Conn, decision_id: UUID) -> tuple[ReviewOutcome, 
         "SELECT * FROM review_outcome WHERE decision_id = %s ORDER BY created_at", (decision_id,)
     ).fetchall()
     return tuple(ReviewOutcome.model_validate(row) for row in rows)
+
+
+# ---------------------------------------------------------------- pipeline queries (plan 21, read-only)
+
+
+def latest_receipt(conn: Conn, txn_id: UUID, reader_model: str) -> ReceiptExtraction | None:
+    """The newest extraction of any of the transaction's receipts by this reader model, or None."""
+    row = conn.execute(
+        "SELECT * FROM receipt_extraction WHERE txn_id = %s AND reader_model = %s"
+        " ORDER BY created_at DESC, receipt_id DESC LIMIT 1",
+        (txn_id, reader_model),
+    ).fetchone()
+    return ReceiptExtraction.model_validate(row) if row else None

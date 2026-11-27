@@ -34,6 +34,8 @@ Each check has exactly one method and one set of inputs, so there is no "partly 
 
 The top-level `agent:` section holds the investigation agent's settings, `min_confidence` and `max_tool_calls`. Code reads them with `RuleSet.agent_settings()`.
 
+The top-level `pipeline:` section holds the orchestrator's operational settings: `max_tries` (tries per queued job, default 5), `stuck_after_minutes` (a run with no route after this long is sent to a person with reason `agent_failed`), and `sweep_grace_minutes` (the sweeps that catch lost work ignore anything younger than this). Code reads them with `RuleSet.pipeline_settings()`. They are part of the file, so editing them changes `rules_version`.
+
 ## How checks are classified
 
 | Facet | Question | Values |

@@ -112,6 +112,18 @@ class MissingAgentSettings(LookupError):
     """The rules file has no `agent:` section, and something asked for it."""
 
 
+class PipelineSettings(InputModel):
+    """Settings for the orchestrator (plan 21): retries, and when the sweeps treat work as lost."""
+
+    max_tries: Annotated[int, Field(ge=1, le=20)] = 5  # tries per queued job; then the last-try hook ends the run
+    stuck_after_minutes: Annotated[int, Field(ge=1)]  # a run still routeless after this long is ended
+    sweep_grace_minutes: Annotated[int, Field(ge=0)]  # a sweep ignores work younger than this
+
+
+class MissingPipelineSettings(LookupError):
+    """The rules file has no `pipeline:` section, and something asked for it."""
+
+
 class Rule(InputModel):
     id: RuleId
     title: NonEmptyStr
@@ -145,6 +157,7 @@ class RuleSet(InputModel):
     categories: dict[str, NonEmptyStr]
     referenced_documents_not_ingested: list[str] = []
     agent: AgentSettings | None = None
+    pipeline: PipelineSettings | None = None
     rules: list[Rule]
     rules_version: NonEmptyStr  # added by load_rules, not written in the YAML
 
@@ -171,6 +184,11 @@ class RuleSet(InputModel):
         if self.agent is None:
             raise MissingAgentSettings("the rules file has no 'agent:' section")
         return self.agent
+
+    def pipeline_settings(self) -> PipelineSettings:
+        if self.pipeline is None:
+            raise MissingPipelineSettings("the rules file has no 'pipeline:' section")
+        return self.pipeline
 
     def has_category(self, category: str) -> bool:
         return category in self.categories
@@ -206,6 +224,7 @@ class _RulesFile(InputModel):
     categories: dict[str, NonEmptyStr]
     referenced_documents_not_ingested: list[str] = []
     agent: AgentSettings | None = None
+    pipeline: PipelineSettings | None = None
     rules: list[Rule]
 
 

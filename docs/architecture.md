@@ -87,6 +87,10 @@ The decision engine works in order, and each step only sees what the step before
 
 Human review decisions are fed back into the test data, so the system can be measured against them.
 
+### How the stages are connected
+
+Each stage runs as a background job and hands the next one to a queue after it has saved its work: `understand` (categorize and score), then `decide` (rule checks and screening), then `investigate` (the agent) when the screener sends it on. A receipt read after the first decision queues a new `decide` run, and so does a passed deadline. A new run that disagrees with an earlier reviewer's call goes to human review instead of overturning it. Periodic sweeps find transactions that were never started, receipts never read, deadlines that passed, and investigations that got stuck.
+
 ### How transactions get in
 
 - A UI for uploading one transaction.

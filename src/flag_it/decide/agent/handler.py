@@ -11,7 +11,7 @@ decided or replaced, nothing else is saved.
 """
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from flag_it.contracts.decide import DecisionRun, Flag
@@ -53,8 +53,17 @@ def _unclear_code_flags(conn: Conn, rules: RuleSet, run: DecisionRun, check_ids:
     return tuple(found)
 
 
-def handle_investigate(conn: Conn, client: LlmClient, rules: RuleSet, payload: Mapping[str, Any]) -> DecisionRun | None:
-    """The run with its route filled in, or None when it already had a route or a later run replaced it."""
+def handle_investigate(
+    conn: Conn,
+    client: LlmClient,
+    rules: RuleSet,
+    payload: Mapping[str, Any],
+    reconcile: Callable[[DecisionRun, GuardrailResult], GuardrailResult] | None = None,
+) -> DecisionRun | None:
+    """The run with its route filled in, or None when it already had a route or a later run replaced it.
+
+    `reconcile`, when given, may rewrite the guardrail result before it is saved. Plan 21 passes the
+    review-conflict rule here: a rerun that disagrees with an earlier reviewer goes to a person."""
     job = load_job(InvestigateJob, payload)  # rejects a job from another major contract version
     run = records.load_decision_run(conn, job.decision_id)
     if run.route is not None:
@@ -86,6 +95,8 @@ def handle_investigate(conn: Conn, client: LlmClient, rules: RuleSet, payload: M
         result = apply_guardrails(
             output, snapshot=snapshot, rules=rules, ledger=ledger, settings=settings, decision_id=run.decision_id
         )
+    if reconcile is not None:
+        result = reconcile(run, result)
     return _save(conn, run, output, result)
 
 

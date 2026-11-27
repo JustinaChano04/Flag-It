@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 # Bump on any change to a model's fields. See "Versioning" in docs/contracts.md.
-CONTRACT_VERSION = "1.1.0"
+CONTRACT_VERSION = "1.2.0"
 
 
 class ContractModel(BaseModel):
